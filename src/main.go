@@ -22,7 +22,6 @@ func main() {
 			fmt.Println("Error UDP")
 			continue
 		}
-		// fmt.Println(n, addr, tmp)
 		var pk packet.PacketParser
 		pk.OriginData = tmp
 		err = pk.Parse()

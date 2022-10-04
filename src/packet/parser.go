@@ -64,12 +64,10 @@ func (p *PacketParser) parseName(startIndex int) (string, int, error) {
 	var length uint8 = 0
 	var i int
 	endIndex := -1
+	isFirst := true
 	for i = startIndex; i < len(*data); i++ {
 		b := (*data)[i]
 		if length == 0 {
-			if i != startIndex {
-				ans += "."
-			}
 			if b == 0 {
 				break
 			}
@@ -83,8 +81,12 @@ func (p *PacketParser) parseName(startIndex int) (string, int, error) {
 				i = int(util.Byte2ToUint16(b^0b11000000, (*data)[i+1])) - 1
 				continue
 			}
+			if !isFirst {
+				ans += "."
+			}
 			length = uint8(b)
 		} else {
+			isFirst = false
 			if b == 0 {
 				return ans, i, fmt.Errorf(constant.ERROR_NAME_LENGTH_WRONG)
 			}
