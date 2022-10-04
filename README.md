@@ -196,3 +196,9 @@ Domain Name System (query)
                         Data length: 12
                         Not supported record. data = [0 10 0 8 88 27 51 97 69 16 159 161]
 ```
+
+添加单元测试，修复一些 bug。
+
+```shell
+$ go test CyberLighthouse/packet -v
+```

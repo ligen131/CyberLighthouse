@@ -1,0 +1,77 @@
+Domain Name System (response)
+    Transaction ID: 0x2fe9
+    Flags: 0x8180 Standard query response, No error
+        1... .... .... .... = Response: Message is a response
+        .000 0... .... .... = Opcode: Standard query (0)
+        .... .0.. .... .... = Authoritative: Server is not an authority for domain
+        .... ..0. .... .... = Truncated: Message is not truncated
+        .... ...1 .... .... = Recursion desired: Do query recursively
+        .... .... 1... .... = Recursion available: Server can do recursive queries
+        .... .... .0.. .... = Z: reserved (0)
+        .... .... ..0. .... = Answer authenticated: Answer/authority portion was not authenticated by the server
+        .... .... ...0 .... = Non-authenticated data: Unacceptable
+        .... .... .... 0000 = Reply code: No error (0)
+    Questions: 1
+    Answer RRs: 8
+    Authority RRs: 0
+    Additional RRs: 0
+    Queries
+    Answers
+        substrate.office.com: type CNAME, class IN, cname outlook.office365.com
+            Name: substrate.office.com
+            Type: CNAME (Canonical NAME for an alias) (5)
+            Class: IN (0x0001)
+            Time to live: 2265 (37 minutes, 45 seconds)
+            Data length: 20
+            CNAME: outlook.office365.com
+        outlook.office365.com: type CNAME, class IN, cname outlook.ha.office365.com
+            Name: outlook.office365.com
+            Type: CNAME (Canonical NAME for an alias) (5)
+            Class: IN (0x0001)
+            Time to live: 2275 (37 minutes, 55 seconds)
+            Data length: 13
+            CNAME: outlook.ha.office365.com
+        outlook.ha.office365.com: type CNAME, class IN, cname outlook.ms-acdc.office.com
+            Name: outlook.ha.office365.com
+            Type: CNAME (Canonical NAME for an alias) (5)
+            Class: IN (0x0001)
+            Time to live: 2274 (37 minutes, 54 seconds)
+            Data length: 18
+            CNAME: outlook.ms-acdc.office.com
+        outlook.ms-acdc.office.com: type CNAME, class IN, cname SJC-efz.ms-acdc.office.com
+            Name: outlook.ms-acdc.office.com
+            Type: CNAME (Canonical NAME for an alias) (5)
+            Class: IN (0x0001)
+            Time to live: 2264 (37 minutes, 44 seconds)
+            Data length: 10
+            CNAME: SJC-efz.ms-acdc.office.com
+        SJC-efz.ms-acdc.office.com: type A, class IN, addr 52.96.165.98
+            Name: SJC-efz.ms-acdc.office.com
+            Type: A (Host Address) (1)
+            Class: IN (0x0001)
+            Time to live: 2265 (37 minutes, 45 seconds)
+            Data length: 4
+            Address: 52.96.165.98
+        SJC-efz.ms-acdc.office.com: type A, class IN, addr 52.96.42.82
+            Name: SJC-efz.ms-acdc.office.com
+            Type: A (Host Address) (1)
+            Class: IN (0x0001)
+            Time to live: 2265 (37 minutes, 45 seconds)
+            Data length: 4
+            Address: 52.96.42.82
+        SJC-efz.ms-acdc.office.com: type A, class IN, addr 40.97.220.34
+            Name: SJC-efz.ms-acdc.office.com
+            Type: A (Host Address) (1)
+            Class: IN (0x0001)
+            Time to live: 2265 (37 minutes, 45 seconds)
+            Data length: 4
+            Address: 40.97.220.34
+        SJC-efz.ms-acdc.office.com: type A, class IN, addr 52.96.110.18
+            Name: SJC-efz.ms-acdc.office.com
+            Type: A (Host Address) (1)
+            Class: IN (0x0001)
+            Time to live: 2265 (37 minutes, 45 seconds)
+            Data length: 4
+            Address: 52.96.110.18
+    [Request In: 40758]
+    [Time: 0.002471000 seconds]

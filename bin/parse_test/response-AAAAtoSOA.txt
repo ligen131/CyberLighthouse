@@ -1,0 +1,52 @@
+Domain Name System (response)
+    Transaction ID: 0xfc05
+    Flags: 0x8180 Standard query response, No error
+        1... .... .... .... = Response: Message is a response
+        .000 0... .... .... = Opcode: Standard query (0)
+        .... .0.. .... .... = Authoritative: Server is not an authority for domain
+        .... ..0. .... .... = Truncated: Message is not truncated
+        .... ...1 .... .... = Recursion desired: Do query recursively
+        .... .... 1... .... = Recursion available: Server can do recursive queries
+        .... .... .0.. .... = Z: reserved (0)
+        .... .... ..0. .... = Answer authenticated: Answer/authority portion was not authenticated by the server
+        .... .... ...0 .... = Non-authenticated data: Unacceptable
+        .... .... .... 0000 = Reply code: No error (0)
+    Questions: 1
+    Answer RRs: 0
+    Authority RRs: 1
+    Additional RRs: 1
+    Queries
+        google.com: type AAAA, class IN
+            Name: google.com
+            [Name Length: 10]
+            [Label Count: 2]
+            Type: AAAA (IPv6 Address) (28)
+            Class: IN (0x0001)
+    Authoritative nameservers
+        google.com: type SOA, class IN, mname ns1.google.com
+            Name: google.com
+            Type: SOA (Start Of a zone of Authority) (6)
+            Class: IN (0x0001)
+            Time to live: 1829 (30 minutes, 29 seconds)
+            Data length: 38
+            Primary name server: ns1.google.com
+            Responsible authority's mailbox: dns-admin.google.com
+            Serial Number: 478738725
+            Refresh Interval: 900 (15 minutes)
+            Retry Interval: 900 (15 minutes)
+            Expire limit: 1800 (30 minutes)
+            Minimum TTL: 60 (1 minute)
+    Additional records
+        <Root>: type OPT
+            Name: <Root>
+            Type: OPT (41)
+            UDP payload size: 4096
+            Higher bits in extended RCODE: 0x00
+            EDNS0 version: 0
+            Z: 0x0000
+                0... .... .... .... = DO bit: Cannot handle DNSSEC security RRs
+                .000 0000 0000 0000 = Reserved: 0x0000
+            Data length: 28
+            Option: COOKIE
+    [Request In: 1153]
+    [Time: 0.010920000 seconds]
