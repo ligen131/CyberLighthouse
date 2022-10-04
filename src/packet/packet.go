@@ -28,36 +28,34 @@ const (
 type PacketHeaderFlags struct {
 	f_QR     bool       // 1 bit
 	f_Opcode OpcodeType // 4 bits
-	f_AA     bool       // 1 bit
+	f_AA     bool       // 1 bit, req only
 	f_TC     bool       // 1 bit
 	f_RD     bool       // 1 bit
 	// 1 byte
-	f_RA    bool      // 1 bit
+	f_RA    bool      // 1 bit, req only
 	f_Z     bool      // 1 bit, should be 0
 	f_AD    bool      // 1 bit, Answer authenticated: Answer/authority portion was not authenticated by the server
 	f_CD    bool      // 1 bit, Non-authenticated data: Unacceptable
-	f_rcode RcodeType // 4 bits
-} // 16 bits = 2 bytes totally
+	f_rcode RcodeType // 4 bits, req only
+} // 16 bits = 2 bytes totally, all codes are origin bytes
 
 type PacketHeader struct {
-	h_TransactionID  uint16            // 2 bytes
-	h_Flags          PacketHeaderFlags // 2 bytes
-	h_QuestionsCount uint16            // 2 bytes
-	h_AnswerRRs      uint16            // 2 bytes
-	h_AuthorityRRs   uint16            // 2 bytes
-	h_AdditionalRRs  uint16            // 2 bytes
+	h_TransactionID uint16            // 2 bytes
+	h_Flags         PacketHeaderFlags // 2 bytes
+	h_QueriesCount  uint16            // 2 bytes
+	h_AnswerRRs     uint16            // 2 bytes
+	h_AuthorityRRs  uint16            // 2 bytes
+	h_AdditionalRRs uint16            // 2 bytes
 } // 12 bytes totally
 
 type RecordType uint16
 
 const (
-	RECORD_A     RecordType = 1
-	RECORD_NS    RecordType = 2
-	RECORD_CNAME RecordType = 5
-	// RECORD_MX            RecordType = 15
-	// RECORD_TXT           RecordType = 16
-	// RECORD_AAAA          RecordType = 28
-	// RECORD_ANY           RecordType = 255
+	RECORD_A             RecordType = 1
+	RECORD_NS            RecordType = 2
+	RECORD_CNAME         RecordType = 5
+	RECORD_MX            RecordType = 15
+	RECORD_AAAA          RecordType = 28
 	RECORD_NOT_SUPPORTED RecordType = 0
 )
 
@@ -74,14 +72,23 @@ const (
 type PacketQueries struct {
 	q_Name  string     // End by 00
 	q_Type  RecordType // 2 bytes
-	q_Class uint16     // 2 bytes, 1 Internet
+	q_Class ClassType  // 2 bytes, 1 Internet
 } // [Name] + 4 bytes totally
 
 type PacketRecords struct {
-	r_Name       string     // Empty represent <Root>, end by 00, notice pointer
-	r_Type       RecordType // 2 bytes
-	r_Class      ClassType  // 2 bytes
-	r_TimeToLive uint32     // 4 bytes, TTL
-	r_DataLength uint16     // 2 bytes
-	r_Data       string
+	r_Name           string     // End by 00, notice pointer
+	r_Type           RecordType // 2 bytes
+	r_Class          ClassType  // 2 bytes
+	r_TimeToLive     uint32     // 4 bytes, TTL
+	r_DataLength     uint16     // 2 bytes
+	r_dataStartIndex int        // not exists in the record
+	// r_Data           []byte
 } // [Name] + 10 bytes + [Data] totally
+
+type Packet struct {
+	p_Header     PacketHeader
+	p_Queries    []PacketQueries
+	p_Answers    []PacketRecords
+	p_Authority  []PacketRecords
+	p_Additional []PacketRecords
+}
