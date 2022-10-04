@@ -127,6 +127,78 @@ func (p *PacketParser) parsePacketQueries(startIndex int) (PacketQueries, int, e
 	return q, i + 4, nil
 }
 
+func (p *PacketParser) parsePacketRecordData(r *PacketRecords) (PacketRecordData, error) {
+	var ans PacketRecordData
+	var err error
+	var s string
+	var i int
+	ans.r_originData = p.OriginData[r.r_dataStartIndex : r.r_dataStartIndex+int(r.r_DataLength)]
+	switch r.r_Type {
+	case RECORD_A:
+		{
+			// IPv4 Address. Format = 255.255.255.255
+			ans.r_A_IP = [4]byte{
+				p.OriginData[r.r_dataStartIndex],
+				p.OriginData[r.r_dataStartIndex+1],
+				p.OriginData[r.r_dataStartIndex+2],
+				p.OriginData[r.r_dataStartIndex+3],
+			}
+		}
+	case RECORD_NS:
+		{
+			s, i, err = p.parseName(r.r_dataStartIndex)
+			if err != nil {
+				return ans, err
+			}
+			ans.r_NS_Name = s
+			if i != r.r_dataStartIndex+int(r.r_DataLength) {
+				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
+			}
+		}
+	case RECORD_CNAME:
+		{
+			s, i, err = p.parseName(r.r_dataStartIndex)
+			if err != nil {
+				return ans, err
+			}
+			ans.r_CNAME_Name = s
+			if i != r.r_dataStartIndex+int(r.r_DataLength) {
+				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
+			}
+		}
+	case RECORD_MX:
+		{
+			ans.r_MX.d_Preference =
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex : r.r_dataStartIndex+2])
+			s, i, err = p.parseName(r.r_dataStartIndex + 2)
+			if err != nil {
+				return ans, err
+			}
+			ans.r_MX.d_Name = s
+			if i != r.r_dataStartIndex+int(r.r_DataLength) {
+				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
+			}
+		}
+	case RECORD_AAAA:
+		{
+			// IPv6 Address. Format = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+			ans.r_AAAA_IP = [8]uint16{
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex : r.r_dataStartIndex+1]),
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+2 : r.r_dataStartIndex+3]),
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+4 : r.r_dataStartIndex+5]),
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+6 : r.r_dataStartIndex+7]),
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+8 : r.r_dataStartIndex+9]),
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+10 : r.r_dataStartIndex+11]),
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+12 : r.r_dataStartIndex+13]),
+				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+14 : r.r_dataStartIndex+15]),
+			}
+		}
+	default:
+
+	}
+	return ans, nil
+}
+
 // return
 // @ans PacketRecords
 // @endIndex int
@@ -153,8 +225,12 @@ func (p *PacketParser) parsePacketRecords(startIndex int) (PacketRecords, int, e
 		if i+10+int(r.r_DataLength) > len((*data)) {
 			return PacketRecords{}, i + 10, fmt.Errorf(constant.ERROR_PACKET_RECORDS_TOO_SHORT)
 		}
-		// r.r_Data = data[i+10 : i+10+int(r.r_DataLength)]
+		// r.r_Data.r_originData = (*data)[i+10 : i+10+int(r.r_DataLength)]
 		r.r_dataStartIndex = i + 10
+		r.r_Data, err = p.parsePacketRecordData(&r)
+		if err != nil {
+			return r, i + 10, err
+		}
 	}
 	return r, i + 10 + int(r.r_DataLength), nil
 }
@@ -247,70 +323,25 @@ func (p *PacketParser) outputClassType(c ClassType) string {
 
 func (p *PacketParser) outputRecordData(r *PacketRecords) (string, error) {
 	ans := ""
-	var err error
-	var s string
-	var i int
 	switch r.r_Type {
 	case RECORD_A:
-		{
-			// IPv4 Address. Format = 255.255.255.255
-			ans += fmt.Sprintf("Address: %d.%d.%d.%d", int(p.OriginData[r.r_dataStartIndex]),
-				int(p.OriginData[r.r_dataStartIndex+1]), int(p.OriginData[r.r_dataStartIndex+2]),
-				int(p.OriginData[r.r_dataStartIndex+3]))
-		}
+		ans += fmt.Sprintf("Address: %d.%d.%d.%d", int(r.r_Data.r_A_IP[0]),
+			int(r.r_Data.r_A_IP[1]), int(r.r_Data.r_A_IP[2]), int(r.r_Data.r_A_IP[3]))
 	case RECORD_NS:
-		{
-			s, i, err = p.parseName(r.r_dataStartIndex)
-			if err != nil {
-				return ans, err
-			}
-			ans += "Name Server: " + s
-			if i != r.r_dataStartIndex+int(r.r_DataLength) {
-				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
-			}
-		}
+		ans += "Name Server: " + r.r_Data.r_NS_Name
 	case RECORD_CNAME:
-		{
-			s, i, err = p.parseName(r.r_dataStartIndex)
-			if err != nil {
-				return ans, err
-			}
-			ans += "CNAME: " + s
-			if i != r.r_dataStartIndex+int(r.r_DataLength) {
-				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
-			}
-		}
+		ans += "CNAME: " + r.r_Data.r_CNAME_Name
 	case RECORD_MX:
-		{
-			ans += fmt.Sprintf("Mail Exchange: Preference: %d; ",
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex:r.r_dataStartIndex+2]))
-			s, i, err = p.parseName(r.r_dataStartIndex + 2)
-			if err != nil {
-				return ans, err
-			}
-			ans += "Name: " + s
-			if i != r.r_dataStartIndex+int(r.r_DataLength) {
-				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
-			}
-		}
+		ans += fmt.Sprintf("Mail Exchange: Preference: %d; ", r.r_Data.r_MX.d_Preference)
+		ans += "Name: " + r.r_Data.r_MX.d_Name
 	case RECORD_AAAA:
-		{
-			// IPv6 Address. Format = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
-			ans += fmt.Sprintf("AAAA Address: %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x\n",
-				int(p.OriginData[r.r_dataStartIndex]), int(p.OriginData[r.r_dataStartIndex+1]),
-				int(p.OriginData[r.r_dataStartIndex+2]), int(p.OriginData[r.r_dataStartIndex+3]),
-				int(p.OriginData[r.r_dataStartIndex+4]), int(p.OriginData[r.r_dataStartIndex+5]),
-				int(p.OriginData[r.r_dataStartIndex+6]), int(p.OriginData[r.r_dataStartIndex+7]),
-				int(p.OriginData[r.r_dataStartIndex+8]), int(p.OriginData[r.r_dataStartIndex+9]),
-				int(p.OriginData[r.r_dataStartIndex+10]), int(p.OriginData[r.r_dataStartIndex+11]),
-				int(p.OriginData[r.r_dataStartIndex+12]), int(p.OriginData[r.r_dataStartIndex+13]),
-				int(p.OriginData[r.r_dataStartIndex+14]), int(p.OriginData[r.r_dataStartIndex+15]))
-		}
+		ans += fmt.Sprintf("AAAA Address: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x\n",
+			int(r.r_Data.r_AAAA_IP[0]), int(r.r_Data.r_AAAA_IP[1]),
+			int(r.r_Data.r_AAAA_IP[2]), int(r.r_Data.r_AAAA_IP[3]),
+			int(r.r_Data.r_AAAA_IP[4]), int(r.r_Data.r_AAAA_IP[5]),
+			int(r.r_Data.r_AAAA_IP[6]), int(r.r_Data.r_AAAA_IP[7]))
 	default:
-		{
-			ans += fmt.Sprintf("Not supported record. data = %v",
-				p.OriginData[r.r_dataStartIndex:r.r_dataStartIndex+int(r.r_DataLength)])
-		}
+		ans += fmt.Sprintf("Not supported record. data = %v", r.r_Data.r_originData)
 	}
 	return ans, nil
 }

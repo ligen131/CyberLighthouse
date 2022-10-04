@@ -75,6 +75,20 @@ type PacketQueries struct {
 	q_Class ClassType  // 2 bytes, 1 Internet
 } // [Name] + 4 bytes totally
 
+type PacketRecordMXData struct {
+	d_Preference uint16
+	d_Name       string
+}
+
+type PacketRecordData struct {
+	r_A_IP       [4]byte
+	r_NS_Name    string
+	r_CNAME_Name string
+	r_MX         PacketRecordMXData
+	r_AAAA_IP    [8]uint16
+	r_originData []byte
+} // Likes union
+
 type PacketRecords struct {
 	r_Name           string     // End by 00, notice pointer
 	r_Type           RecordType // 2 bytes
@@ -82,7 +96,7 @@ type PacketRecords struct {
 	r_TimeToLive     uint32     // 4 bytes, TTL
 	r_DataLength     uint16     // 2 bytes
 	r_dataStartIndex int        // not exists in the record
-	// r_Data           []byte
+	r_Data           PacketRecordData
 } // [Name] + 10 bytes + [Data] totally
 
 type Packet struct {
