@@ -10,6 +10,14 @@ $ go mod download
 $ go run main.go
 ```
 
+It will listening on `localhost:53`.
+
+Run following command to execute parser and generator.
+
+```shell
+$ dig google.com @localhost
+```
+
 ## Build
 
 ```shell
@@ -20,6 +28,13 @@ $ go build main.go -o ../build/digg
 
 The built file is generated into `build` folder.
 
+## Testing
+
+```shell
+$ cd src
+$ go test CyberLighthouse -v
+```
+
 ## LICENSE
 
 GNU General Public License v3.0
@@ -27,6 +42,25 @@ GNU General Public License v3.0
 ## Project Logs
 
 每天的日志可能会不定时更新（指凌晨不知道几点才 `push`）。
+
+| 阶段 | 任务 | 是否完成 | 完成时间 |
+| :---: | :--- | :---: | :---: |
+| 阶段 1 | 查资料 | ✅ | Day 1 |
+| 阶段 2 | DNS 报文解析器 | ✅ | Day 4 |
+| 阶段 2 | 解析器【进阶】 支持 AAAA MX | ✅ | Day 4 |
+| 阶段 2 | DNS 报文生成器 | ✅ | Day 5 |
+| 阶段 2 | 生成器【进阶】 支持 AAAA MX | ✅ | Day 5 |
+| 阶段 3 | DNS Client | ❌ | -- |
+| 阶段 3 | DNS Client【进阶】支持 AAAA MX | ❌ | -- |
+| 阶段 3 | DNS Client【进阶】支持 TCP | ❌ | -- |
+| 阶段 4 | DNS Server 非递归查询 | ❌ | -- |
+| 阶段 4 | DNS Server 递归查询 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持 AAAA MX | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】缓存改存储 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持递归查询开关 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持 TCP | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持协议更换 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持并发 | ❌ | -- |
 
 ### Task 1
 
@@ -207,6 +241,24 @@ Day 5
 
 `Generator` 还挺好写的，依葫芦画瓢就是了。
 
-添加单元测试。
+`dig query` 反解析结果
+
+```
+[55 140 1 32 0 1 0 0 0 0 0 1 6 103 111 111 103 108 101 3 99 111 109 0 0 16 0 1 0 0 41 16 0 0 0 0 0 0 12 0 10 0 8 112 159 32 187 233 116 227 147]
+```
+
+与原数据一致。
+
+添加单元测试。修复一些 bug。
 
 至此阶段二基本完成。
+
+### Task 3
+
+参考：[golang常用库包：cli命令行/应用程序生成工具-cobra使用](https://www.cnblogs.com/jiujuan/p/15487918.html)
+
+spf13/cobra: <https://github.com/spf13/cobra>
+
+既然任务书说了可以用命令行支持库，那直接用 `cobra` ，就不手动解析了。
+
+收发 UDP 包其实在上一阶段就用到了。
