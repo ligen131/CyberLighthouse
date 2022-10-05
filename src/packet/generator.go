@@ -69,7 +69,7 @@ func (g *PacketGenerator) genPacketHeader() ([]byte, error) {
 
 func (g *PacketGenerator) genStringByte(s string) []byte {
 	ans := []byte{0}
-	if s == "<Root>" {
+	if s == "<Root>" || s == "." {
 		s = ""
 	}
 	if s == "" {
