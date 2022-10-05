@@ -19,17 +19,17 @@ func (p *PacketParser) parsePacketHeaderFlags(data []byte) (PacketHeaderFlags, e
 	var flags PacketHeaderFlags
 	a := uint8(data[0])
 	b := uint8(data[1])
-	flags.f_QR = bool((a & (1 << 7)) != 0)
-	flags.f_Opcode = OpcodeType((a & 0b01111000) >> 3)
-	flags.f_AA = bool((a & (1 << 2)) != 0)
-	flags.f_TC = bool((a & (1 << 1)) != 0)
-	flags.f_RD = bool((a & (1 << 0)) != 0)
+	flags.F_QR = bool((a & (1 << 7)) != 0)
+	flags.F_Opcode = OpcodeType((a & 0b01111000) >> 3)
+	flags.F_AA = bool((a & (1 << 2)) != 0)
+	flags.F_TC = bool((a & (1 << 1)) != 0)
+	flags.F_RD = bool((a & (1 << 0)) != 0)
 
-	flags.f_RA = bool((b & (1 << 7)) != 0)
-	flags.f_Z = bool((b & (1 << 6)) != 0)
-	flags.f_AD = bool((b & (1 << 5)) != 0)
-	flags.f_CD = bool((b & (1 << 4)) != 0)
-	flags.f_rcode = RcodeType(b & 0b00001111)
+	flags.F_RA = bool((b & (1 << 7)) != 0)
+	flags.F_Z = bool((b & (1 << 6)) != 0)
+	flags.F_AD = bool((b & (1 << 5)) != 0)
+	flags.F_CD = bool((b & (1 << 4)) != 0)
+	flags.F_rcode = RcodeType(b & 0b00001111)
 	return flags, nil
 }
 
@@ -40,17 +40,17 @@ func (p *PacketParser) parsePacketHeader(data []byte) (PacketHeader, error) {
 	}
 	var header PacketHeader
 	var err error
-	header.h_TransactionID = util.ByteToUint16(data[0:2])
+	header.H_TransactionID = util.ByteToUint16(data[0:2])
 
-	header.h_Flags, err = p.parsePacketHeaderFlags(data[2:4])
+	header.H_Flags, err = p.parsePacketHeaderFlags(data[2:4])
 	if err != nil {
 		return PacketHeader{}, err
 	}
 
-	header.h_QueriesCount = util.ByteToUint16(data[4:6])
-	header.h_AnswerRRs = util.ByteToUint16(data[6:8])
-	header.h_AuthorityRRs = util.ByteToUint16(data[8:10])
-	header.h_AdditionalRRs = util.ByteToUint16(data[10:12])
+	header.H_QueriesCount = util.ByteToUint16(data[4:6])
+	header.H_AnswerRRs = util.ByteToUint16(data[6:8])
+	header.H_AuthorityRRs = util.ByteToUint16(data[8:10])
+	header.H_AdditionalRRs = util.ByteToUint16(data[10:12])
 	return header, nil
 }
 
@@ -115,15 +115,15 @@ func (p *PacketParser) parsePacketQueries(startIndex int) (PacketQueries, int, e
 	var i int
 	var err error
 	var q PacketQueries
-	q.q_Name, i, err = p.parseName(startIndex)
+	q.Q_Name, i, err = p.parseName(startIndex)
 	if err != nil {
 		return PacketQueries{}, i, err
 	}
 	if i+4 > len((*data)) {
 		return PacketQueries{}, i, fmt.Errorf(constant.ERROR_PACKET_QUERIES_TOO_SHORT)
 	}
-	q.q_Type = RecordType(util.ByteToUint16((*data)[i : i+2]))
-	q.q_Class = ClassType(util.ByteToUint16((*data)[i+2 : i+4]))
+	q.Q_Type = RecordType(util.ByteToUint16((*data)[i : i+2]))
+	q.Q_Class = ClassType(util.ByteToUint16((*data)[i+2 : i+4]))
 	return q, i + 4, nil
 }
 
@@ -132,65 +132,65 @@ func (p *PacketParser) parsePacketRecordData(r *PacketRecords) (PacketRecordData
 	var err error
 	var s string
 	var i int
-	ans.r_originData = p.OriginData[r.r_dataStartIndex : r.r_dataStartIndex+int(r.r_DataLength)]
-	switch r.r_Type {
+	ans.R_originData = p.OriginData[r.R_dataStartIndex : r.R_dataStartIndex+int(r.R_DataLength)]
+	switch r.R_Type {
 	case RECORD_A:
 		{
 			// IPv4 Address. Format = 255.255.255.255
-			ans.r_A_IP = [4]byte{
-				p.OriginData[r.r_dataStartIndex],
-				p.OriginData[r.r_dataStartIndex+1],
-				p.OriginData[r.r_dataStartIndex+2],
-				p.OriginData[r.r_dataStartIndex+3],
+			ans.R_A_IP = [4]byte{
+				p.OriginData[r.R_dataStartIndex],
+				p.OriginData[r.R_dataStartIndex+1],
+				p.OriginData[r.R_dataStartIndex+2],
+				p.OriginData[r.R_dataStartIndex+3],
 			}
 		}
 	case RECORD_NS:
 		{
-			s, i, err = p.parseName(r.r_dataStartIndex)
+			s, i, err = p.parseName(r.R_dataStartIndex)
 			if err != nil {
 				return ans, err
 			}
-			ans.r_NS_Name = s
-			if i != r.r_dataStartIndex+int(r.r_DataLength) {
+			ans.R_NS_Name = s
+			if i != r.R_dataStartIndex+int(r.R_DataLength) {
 				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
 			}
 		}
 	case RECORD_CNAME:
 		{
-			s, i, err = p.parseName(r.r_dataStartIndex)
+			s, i, err = p.parseName(r.R_dataStartIndex)
 			if err != nil {
 				return ans, err
 			}
-			ans.r_CNAME_Name = s
-			if i != r.r_dataStartIndex+int(r.r_DataLength) {
+			ans.R_CNAME_Name = s
+			if i != r.R_dataStartIndex+int(r.R_DataLength) {
 				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
 			}
 		}
 	case RECORD_MX:
 		{
-			ans.r_MX.d_Preference =
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex : r.r_dataStartIndex+2])
-			s, i, err = p.parseName(r.r_dataStartIndex + 2)
+			ans.R_MX.D_Preference =
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex : r.R_dataStartIndex+2])
+			s, i, err = p.parseName(r.R_dataStartIndex + 2)
 			if err != nil {
 				return ans, err
 			}
-			ans.r_MX.d_Name = s
-			if i != r.r_dataStartIndex+int(r.r_DataLength) {
+			ans.R_MX.D_Name = s
+			if i != r.R_dataStartIndex+int(r.R_DataLength) {
 				return ans, fmt.Errorf(constant.ERROR_PACKET_RECORD_DATA_LENGTH_WRONG)
 			}
 		}
 	case RECORD_AAAA:
 		{
 			// IPv6 Address. Format = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
-			ans.r_AAAA_IP = [8]uint16{
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex : r.r_dataStartIndex+1]),
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+2 : r.r_dataStartIndex+3]),
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+4 : r.r_dataStartIndex+5]),
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+6 : r.r_dataStartIndex+7]),
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+8 : r.r_dataStartIndex+9]),
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+10 : r.r_dataStartIndex+11]),
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+12 : r.r_dataStartIndex+13]),
-				util.ByteToUint16(p.OriginData[r.r_dataStartIndex+14 : r.r_dataStartIndex+15]),
+			ans.R_AAAA_IP = [8]uint16{
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex : r.R_dataStartIndex+1]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+2 : r.R_dataStartIndex+3]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+4 : r.R_dataStartIndex+5]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+6 : r.R_dataStartIndex+7]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+8 : r.R_dataStartIndex+9]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+10 : r.R_dataStartIndex+11]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+12 : r.R_dataStartIndex+13]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+14 : r.R_dataStartIndex+15]),
 			}
 		}
 	default:
@@ -208,7 +208,7 @@ func (p *PacketParser) parsePacketRecords(startIndex int) (PacketRecords, int, e
 	var i int
 	var err error
 	var r PacketRecords
-	r.r_Name, i, err = p.parseName(startIndex)
+	r.R_Name, i, err = p.parseName(startIndex)
 	if err != nil {
 		return PacketRecords{}, i, err
 	}
@@ -217,22 +217,22 @@ func (p *PacketParser) parsePacketRecords(startIndex int) (PacketRecords, int, e
 		return PacketRecords{}, i, fmt.Errorf(constant.ERROR_PACKET_RECORDS_TOO_SHORT)
 	}
 
-	r.r_Type = RecordType(util.ByteToUint16((*data)[i : i+2]))
-	r.r_Class = ClassType(util.ByteToUint16((*data)[i+2 : i+4]))
-	r.r_TimeToLive = util.ByteToUint32((*data)[i+4 : i+8])
-	r.r_DataLength = util.ByteToUint16((*data)[i+8 : i+10])
-	if r.r_DataLength != 0 {
-		if i+10+int(r.r_DataLength) > len((*data)) {
+	r.R_Type = RecordType(util.ByteToUint16((*data)[i : i+2]))
+	r.R_Class = ClassType(util.ByteToUint16((*data)[i+2 : i+4]))
+	r.R_TimeToLive = util.ByteToUint32((*data)[i+4 : i+8])
+	r.R_DataLength = util.ByteToUint16((*data)[i+8 : i+10])
+	if r.R_DataLength != 0 {
+		if i+10+int(r.R_DataLength) > len((*data)) {
 			return PacketRecords{}, i + 10, fmt.Errorf(constant.ERROR_PACKET_RECORDS_TOO_SHORT)
 		}
-		// r.r_Data.r_originData = (*data)[i+10 : i+10+int(r.r_DataLength)]
-		r.r_dataStartIndex = i + 10
-		r.r_Data, err = p.parsePacketRecordData(&r)
+		// r.R_Data.R_originData = (*data)[i+10 : i+10+int(r.R_DataLength)]
+		r.R_dataStartIndex = i + 10
+		r.R_Data, err = p.parsePacketRecordData(&r)
 		if err != nil {
 			return r, i + 10, err
 		}
 	}
-	return r, i + 10 + int(r.r_DataLength), nil
+	return r, i + 10 + int(r.R_DataLength), nil
 }
 
 func (p *PacketParser) Parse() error {
@@ -240,44 +240,44 @@ func (p *PacketParser) Parse() error {
 		return fmt.Errorf(constant.ERROR_MESSAGE_TOO_SHORT)
 	}
 	var err error
-	p.Result.p_Header, err = p.parsePacketHeader(p.OriginData[0:12])
+	p.Result.P_Header, err = p.parsePacketHeader(p.OriginData[0:12])
 	if err != nil {
 		return err
 	}
 
 	var i int = 12
 	var q PacketQueries
-	for j := 0; j < int(p.Result.p_Header.h_QueriesCount); j++ {
+	for j := 0; j < int(p.Result.P_Header.H_QueriesCount); j++ {
 		q, i, err = p.parsePacketQueries(i)
 		if err != nil {
 			return err
 		}
-		p.Result.p_Queries = append(p.Result.p_Queries, q)
+		p.Result.P_Queries = append(p.Result.P_Queries, q)
 	}
 
 	var r PacketRecords
-	for j := 0; j < int(p.Result.p_Header.h_AnswerRRs); j++ {
+	for j := 0; j < int(p.Result.P_Header.H_AnswerRRs); j++ {
 		r, i, err = p.parsePacketRecords(i)
 		if err != nil {
 			return err
 		}
-		p.Result.p_Answers = append(p.Result.p_Answers, r)
+		p.Result.P_Answers = append(p.Result.P_Answers, r)
 	}
 
-	for j := 0; j < int(p.Result.p_Header.h_AuthorityRRs); j++ {
+	for j := 0; j < int(p.Result.P_Header.H_AuthorityRRs); j++ {
 		r, i, err = p.parsePacketRecords(i)
 		if err != nil {
 			return err
 		}
-		p.Result.p_Authority = append(p.Result.p_Authority, r)
+		p.Result.P_Authority = append(p.Result.P_Authority, r)
 	}
 
-	for j := 0; j < int(p.Result.p_Header.h_AdditionalRRs); j++ {
+	for j := 0; j < int(p.Result.P_Header.H_AdditionalRRs); j++ {
 		r, i, err = p.parsePacketRecords(i)
 		if err != nil {
 			return err
 		}
-		p.Result.p_Additional = append(p.Result.p_Additional, r)
+		p.Result.P_Additional = append(p.Result.P_Additional, r)
 	}
 
 	return nil
@@ -323,44 +323,44 @@ func (p *PacketParser) outputClassType(c ClassType) string {
 
 func (p *PacketParser) outputRecordData(r *PacketRecords) (string, error) {
 	ans := ""
-	switch r.r_Type {
+	switch r.R_Type {
 	case RECORD_A:
-		ans += fmt.Sprintf("Address: %d.%d.%d.%d", int(r.r_Data.r_A_IP[0]),
-			int(r.r_Data.r_A_IP[1]), int(r.r_Data.r_A_IP[2]), int(r.r_Data.r_A_IP[3]))
+		ans += fmt.Sprintf("Address: %d.%d.%d.%d", int(r.R_Data.R_A_IP[0]),
+			int(r.R_Data.R_A_IP[1]), int(r.R_Data.R_A_IP[2]), int(r.R_Data.R_A_IP[3]))
 	case RECORD_NS:
-		ans += "Name Server: " + r.r_Data.r_NS_Name
+		ans += "Name Server: " + r.R_Data.R_NS_Name
 	case RECORD_CNAME:
-		ans += "CNAME: " + r.r_Data.r_CNAME_Name
+		ans += "CNAME: " + r.R_Data.R_CNAME_Name
 	case RECORD_MX:
-		ans += fmt.Sprintf("Mail Exchange: Preference: %d; ", r.r_Data.r_MX.d_Preference)
-		ans += "Name: " + r.r_Data.r_MX.d_Name
+		ans += fmt.Sprintf("Mail Exchange: Preference: %d; ", r.R_Data.R_MX.D_Preference)
+		ans += "Name: " + r.R_Data.R_MX.D_Name
 	case RECORD_AAAA:
 		ans += fmt.Sprintf("AAAA Address: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x\n",
-			int(r.r_Data.r_AAAA_IP[0]), int(r.r_Data.r_AAAA_IP[1]),
-			int(r.r_Data.r_AAAA_IP[2]), int(r.r_Data.r_AAAA_IP[3]),
-			int(r.r_Data.r_AAAA_IP[4]), int(r.r_Data.r_AAAA_IP[5]),
-			int(r.r_Data.r_AAAA_IP[6]), int(r.r_Data.r_AAAA_IP[7]))
+			int(r.R_Data.R_AAAA_IP[0]), int(r.R_Data.R_AAAA_IP[1]),
+			int(r.R_Data.R_AAAA_IP[2]), int(r.R_Data.R_AAAA_IP[3]),
+			int(r.R_Data.R_AAAA_IP[4]), int(r.R_Data.R_AAAA_IP[5]),
+			int(r.R_Data.R_AAAA_IP[6]), int(r.R_Data.R_AAAA_IP[7]))
 	default:
-		ans += fmt.Sprintf("Not supported record. data = %v", r.r_Data.r_originData)
+		ans += fmt.Sprintf("Not supported record. data = %v", r.R_Data.R_originData)
 	}
 	return ans, nil
 }
 
 func (p *PacketParser) outputQueries(q *PacketQueries) string {
 	ans := ""
-	ans += "			Name: " + q.q_Name + "\n"
-	ans += "			" + p.outputRecordType(q.q_Type) + "\n"
-	ans += "			" + p.outputClassType(q.q_Class) + "\n"
+	ans += "			Name: " + q.Q_Name + "\n"
+	ans += "			" + p.outputRecordType(q.Q_Type) + "\n"
+	ans += "			" + p.outputClassType(q.Q_Class) + "\n"
 	return ans
 }
 
 func (p *PacketParser) outputRecords(r *PacketRecords) (string, error) {
 	ans := ""
-	ans += "			Name: " + r.r_Name + "\n"
-	ans += "			" + p.outputRecordType(r.r_Type) + "\n"
-	ans += "			" + p.outputClassType(r.r_Class) + "\n"
-	ans += fmt.Sprintf("			Time to live: %d\n", r.r_TimeToLive)
-	ans += fmt.Sprintf("			Data length: %d\n", r.r_DataLength)
+	ans += "			Name: " + r.R_Name + "\n"
+	ans += "			" + p.outputRecordType(r.R_Type) + "\n"
+	ans += "			" + p.outputClassType(r.R_Class) + "\n"
+	ans += fmt.Sprintf("			Time to live: %d\n", r.R_TimeToLive)
+	ans += fmt.Sprintf("			Data length: %d\n", r.R_DataLength)
 	s, err := p.outputRecordData(r)
 	if err != nil {
 		return ans, err
@@ -371,7 +371,7 @@ func (p *PacketParser) outputRecords(r *PacketRecords) (string, error) {
 
 func (p *PacketParser) Output() error {
 	ans := "Domain Name System "
-	req := p.Result.p_Header.h_Flags.f_QR
+	req := p.Result.P_Header.H_Flags.F_QR
 	if req {
 		ans += "(response)\n"
 	} else {
@@ -379,14 +379,14 @@ func (p *PacketParser) Output() error {
 	}
 
 	// ------------------ Header ------------------
-	ans += fmt.Sprintf("	Transaction ID: 0x%x\n", p.Result.p_Header.h_TransactionID)
+	ans += fmt.Sprintf("	Transaction ID: 0x%x\n", p.Result.P_Header.H_TransactionID)
 	ans += "	Flags:\n"
 	if req {
 		ans += "		Response: Message is a response\n"
 	} else {
 		ans += "		Response: Message is a query\n"
 	}
-	switch p.Result.p_Header.h_Flags.f_Opcode {
+	switch p.Result.P_Header.H_Flags.F_Opcode {
 	case OPCODE_STANDARD:
 		ans += "		Opcode: Standard query (0)\n"
 	case OPCODE_INVERSE:
@@ -394,50 +394,50 @@ func (p *PacketParser) Output() error {
 	case OPCODE_STATUS:
 		ans += "		Opcode: Status query (2)\n"
 	default:
-		ans += fmt.Sprintf("		Opcode: Not supported query (%d)\n", int(p.Result.p_Header.h_Flags.f_Opcode))
+		ans += fmt.Sprintf("		Opcode: Not supported query (%d)\n", int(p.Result.P_Header.H_Flags.F_Opcode))
 	}
 	if req {
-		if p.Result.p_Header.h_Flags.f_AA {
+		if p.Result.P_Header.H_Flags.F_AA {
 			ans += "		Authoritative: Server is an authority for domain\n"
 		} else {
 			ans += "		Authoritative: Server is not an authority for domain\n"
 		}
 	}
-	if !p.Result.p_Header.h_Flags.f_TC {
+	if !p.Result.P_Header.H_Flags.F_TC {
 		ans += "		Truncated: Message is not truncated\n"
 	} else {
 		ans += "		Truncated: Message is truncated\n"
 	}
-	if p.Result.p_Header.h_Flags.f_RD {
+	if p.Result.P_Header.H_Flags.F_RD {
 		ans += "		Recursion desired: Do query recursively\n"
 	} else {
 		ans += "		Recursion desired: Do not query recursively\n"
 	}
 	if req {
-		if p.Result.p_Header.h_Flags.f_RA {
+		if p.Result.P_Header.H_Flags.F_RA {
 			ans += "		Recursion available: Server can do recursive queries\n"
 		} else {
 			ans += "		Recursion unavailable: Server can not do recursive queries\n"
 		}
 	}
-	if !p.Result.p_Header.h_Flags.f_Z {
+	if !p.Result.P_Header.H_Flags.F_Z {
 		ans += "		Z: reserved (0)\n"
 	} else {
 		ans += "		Z: reserved (1)\n"
 	}
-	if p.Result.p_Header.h_Flags.f_AD {
+	if p.Result.P_Header.H_Flags.F_AD {
 		ans += "		AD bit: Set\n"
 	} else {
 		ans += "		Answer authenticated: Answer/authority portion was not authenticated by the server\n"
 	}
-	if p.Result.p_Header.h_Flags.f_CD {
+	if p.Result.P_Header.H_Flags.F_CD {
 		ans += "		CD bit: Set\n"
 	} else {
 		ans += "		Non-authenticated data: Unacceptable\n"
 	}
 	if req {
 		ans += "		Reply code: "
-		switch p.Result.p_Header.h_Flags.f_rcode {
+		switch p.Result.P_Header.H_Flags.F_rcode {
 		case RCODE_NOERROR:
 			ans += "No error (0)\n"
 		case RCODE_FORMAT_ERROR:
@@ -451,53 +451,53 @@ func (p *PacketParser) Output() error {
 		case RCODE_REFUSED:
 			ans += "Refused (5)\n"
 		default:
-			ans += fmt.Sprintf("Other error (%d)\n", int(p.Result.p_Header.h_Flags.f_rcode))
+			ans += fmt.Sprintf("Other error (%d)\n", int(p.Result.P_Header.H_Flags.F_rcode))
 		}
 	}
-	ans += fmt.Sprintf("	Questions: %d\n", int(p.Result.p_Header.h_QueriesCount))
-	ans += fmt.Sprintf("	Answer RRs: %d\n", int(p.Result.p_Header.h_AnswerRRs))
-	ans += fmt.Sprintf("	Authority RRs: %d\n", int(p.Result.p_Header.h_AuthorityRRs))
-	ans += fmt.Sprintf("	Additional RRs: %d\n", int(p.Result.p_Header.h_AdditionalRRs))
+	ans += fmt.Sprintf("	Questions: %d\n", int(p.Result.P_Header.H_QueriesCount))
+	ans += fmt.Sprintf("	Answer RRs: %d\n", int(p.Result.P_Header.H_AnswerRRs))
+	ans += fmt.Sprintf("	Authority RRs: %d\n", int(p.Result.P_Header.H_AuthorityRRs))
+	ans += fmt.Sprintf("	Additional RRs: %d\n", int(p.Result.P_Header.H_AdditionalRRs))
 	// ------------------ Header End ------------------
 
 	// ------------------ Queries ------------------
-	if p.Result.p_Header.h_QueriesCount > 0 {
+	if p.Result.P_Header.H_QueriesCount > 0 {
 		ans += "	Queries:\n"
-		for i := range p.Result.p_Queries {
+		for i := range p.Result.P_Queries {
 			ans += fmt.Sprintf("		[%d] queries\n", i)
-			ans += p.outputQueries(&p.Result.p_Queries[i])
+			ans += p.outputQueries(&p.Result.P_Queries[i])
 		}
 	}
 	// ------------------ Queries End ------------------
 
 	// ------------------ Records ------------------
-	if p.Result.p_Header.h_AnswerRRs > 0 {
+	if p.Result.P_Header.H_AnswerRRs > 0 {
 		ans += "	Answers:\n"
-		for i := range p.Result.p_Answers {
+		for i := range p.Result.P_Answers {
 			ans += fmt.Sprintf("		[%d] answers\n", i)
-			s, err := p.outputRecords(&p.Result.p_Answers[i])
+			s, err := p.outputRecords(&p.Result.P_Answers[i])
 			if err != nil {
 				return err
 			}
 			ans += s
 		}
 	}
-	if p.Result.p_Header.h_AuthorityRRs > 0 {
+	if p.Result.P_Header.H_AuthorityRRs > 0 {
 		ans += "	Authoritative nameservers:\n"
-		for i := range p.Result.p_Authority {
+		for i := range p.Result.P_Authority {
 			ans += fmt.Sprintf("		[%d] authoritative nameservers\n", i)
-			s, err := p.outputRecords(&p.Result.p_Authority[i])
+			s, err := p.outputRecords(&p.Result.P_Authority[i])
 			if err != nil {
 				return err
 			}
 			ans += s
 		}
 	}
-	if p.Result.p_Header.h_AdditionalRRs > 0 {
+	if p.Result.P_Header.H_AdditionalRRs > 0 {
 		ans += "	Additional records:\n"
-		for i := range p.Result.p_Additional {
+		for i := range p.Result.P_Additional {
 			ans += fmt.Sprintf("		[%d] additional records\n", i)
-			s, err := p.outputRecords(&p.Result.p_Additional[i])
+			s, err := p.outputRecords(&p.Result.P_Additional[i])
 			if err != nil {
 				return err
 			}

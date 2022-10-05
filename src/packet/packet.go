@@ -26,26 +26,26 @@ const (
 )
 
 type PacketHeaderFlags struct {
-	f_QR     bool       // 1 bit, query = 0, req = 1
-	f_Opcode OpcodeType // 4 bits
-	f_AA     bool       // 1 bit, req only
-	f_TC     bool       // 1 bit
-	f_RD     bool       // 1 bit
+	F_QR     bool       // 1 bit, query = 0, req = 1
+	F_Opcode OpcodeType // 4 bits
+	F_AA     bool       // 1 bit, req only
+	F_TC     bool       // 1 bit
+	F_RD     bool       // 1 bit
 	// 1 byte
-	f_RA    bool      // 1 bit, req only
-	f_Z     bool      // 1 bit, should be 0
-	f_AD    bool      // 1 bit, Answer authenticated: Answer/authority portion was not authenticated by the server
-	f_CD    bool      // 1 bit, Non-authenticated data: Unacceptable
-	f_rcode RcodeType // 4 bits, req only
+	F_RA    bool      // 1 bit, req only
+	F_Z     bool      // 1 bit, should be 0
+	F_AD    bool      // 1 bit, Answer authenticated: Answer/authority portion was not authenticated by the server
+	F_CD    bool      // 1 bit, Non-authenticated data: Unacceptable
+	F_rcode RcodeType // 4 bits, req only
 } // 16 bits = 2 bytes totally, all codes are origin bytes
 
 type PacketHeader struct {
-	h_TransactionID uint16            // 2 bytes
-	h_Flags         PacketHeaderFlags // 2 bytes
-	h_QueriesCount  uint16            // 2 bytes
-	h_AnswerRRs     uint16            // 2 bytes
-	h_AuthorityRRs  uint16            // 2 bytes
-	h_AdditionalRRs uint16            // 2 bytes
+	H_TransactionID uint16            // 2 bytes
+	H_Flags         PacketHeaderFlags // 2 bytes
+	H_QueriesCount  uint16            // 2 bytes
+	H_AnswerRRs     uint16            // 2 bytes
+	H_AuthorityRRs  uint16            // 2 bytes
+	H_AdditionalRRs uint16            // 2 bytes
 } // 12 bytes totally
 
 type RecordType uint16
@@ -70,39 +70,39 @@ const (
 )
 
 type PacketQueries struct {
-	q_Name  string     // End by 00
-	q_Type  RecordType // 2 bytes
-	q_Class ClassType  // 2 bytes, 1 Internet
+	Q_Name  string     // End by 00
+	Q_Type  RecordType // 2 bytes
+	Q_Class ClassType  // 2 bytes, 1 Internet
 } // [Name] + 4 bytes totally
 
 type PacketRecordMXData struct {
-	d_Preference uint16
-	d_Name       string
+	D_Preference uint16
+	D_Name       string
 }
 
 type PacketRecordData struct {
-	r_A_IP       [4]byte
-	r_NS_Name    string
-	r_CNAME_Name string
-	r_MX         PacketRecordMXData
-	r_AAAA_IP    [8]uint16
-	r_originData []byte
+	R_A_IP       [4]byte
+	R_NS_Name    string
+	R_CNAME_Name string
+	R_MX         PacketRecordMXData
+	R_AAAA_IP    [8]uint16
+	R_originData []byte
 } // Likes union
 
 type PacketRecords struct {
-	r_Name           string     // End by 00, notice pointer
-	r_Type           RecordType // 2 bytes
-	r_Class          ClassType  // 2 bytes
-	r_TimeToLive     uint32     // 4 bytes, TTL
-	r_DataLength     uint16     // 2 bytes
-	r_dataStartIndex int        // not exists in the record
-	r_Data           PacketRecordData
+	R_Name           string     // End by 00, notice pointer
+	R_Type           RecordType // 2 bytes
+	R_Class          ClassType  // 2 bytes
+	R_TimeToLive     uint32     // 4 bytes, TTL
+	R_DataLength     uint16     // 2 bytes
+	R_dataStartIndex int        // not exists in the record
+	R_Data           PacketRecordData
 } // [Name] + 10 bytes + [Data] totally
 
 type Packet struct {
-	p_Header     PacketHeader
-	p_Queries    []PacketQueries
-	p_Answers    []PacketRecords
-	p_Authority  []PacketRecords
-	p_Additional []PacketRecords
+	P_Header     PacketHeader
+	P_Queries    []PacketQueries
+	P_Answers    []PacketRecords
+	P_Authority  []PacketRecords
+	P_Additional []PacketRecords
 }
