@@ -26,7 +26,7 @@ const (
 )
 
 type PacketHeaderFlags struct {
-	f_QR     bool       // 1 bit
+	f_QR     bool       // 1 bit, query = 0, req = 1
 	f_Opcode OpcodeType // 4 bits
 	f_AA     bool       // 1 bit, req only
 	f_TC     bool       // 1 bit

@@ -7,6 +7,23 @@ import (
 	"net"
 )
 
+func min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func checkByteSame(n int, a []byte, b []byte) bool {
+	n = min(n, min(len(a), len(b)))
+	for i := 0; i < n; i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	addr := net.UDPAddr{
 		Port: 53,
@@ -32,6 +49,18 @@ func main() {
 			if err != nil {
 				util.ErrorPrint(err, tmp, "Output failed.")
 			}
+		}
+
+		var ge packet.PacketGenerator
+		ge.Pkt = pk.Result
+		err = ge.Generator()
+		if err != nil {
+			util.ErrorPrint(err, nil, "Generate failed.")
+		}
+		fmt.Println(pk.OriginData[:len(ge.Result)])
+		fmt.Println(ge.Result, len(ge.Result))
+		if !checkByteSame(len(ge.Result), pk.OriginData, ge.Result) {
+			fmt.Println("Generate query wrong.")
 		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"CyberLighthouse/packet"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -19,7 +20,7 @@ var parserTestBinFile []string = []string{
 // go test -v
 func TestParser(t *testing.T) {
 	for _, f := range parserTestBinFile {
-		dir, err := os.Getwd()
+		dir, _ := os.Getwd()
 		f = dir + f
 		file, err := os.Open(f)
 		if err != nil {
@@ -40,6 +41,54 @@ func TestParser(t *testing.T) {
 			if err != nil {
 				t.Error(err, "Output failed.")
 			}
+		}
+	}
+}
+
+func TestGenerator(t *testing.T) {
+	for _, f := range parserTestBinFile {
+		dir, _ := os.Getwd()
+		f = dir + f
+		file, err := os.Open(f)
+		if err != nil {
+			t.Error(err, fmt.Sprintf("Read file %s failed.", f))
+			continue
+		}
+		defer file.Close()
+
+		buff := make([]byte, 1024)
+		n, _ := file.Read(buff)
+		var pk packet.PacketParser
+		pk.OriginData = buff
+		err = pk.Parse()
+		if err != nil {
+			t.Error(err, "Parse failed.")
+		}
+
+		var ge packet.PacketGenerator
+		ge.Pkt = pk.Result
+		err = ge.Generator()
+		if err != nil {
+			t.Error(err, "Generate failed.")
+		}
+		var pk2 packet.PacketParser
+		pk2.OriginData = ge.Result
+		err = pk2.Parse()
+		if err != nil {
+			t.Error(err, "Parse2 failed.")
+		}
+		fmt.Println("------------------------------------------------")
+		err = pk.Output()
+		if err != nil {
+			t.Error(err, "Output failed.")
+		}
+		err = pk2.Output()
+		if err != nil {
+			t.Error(err, "Output2 failed.")
+		}
+		fmt.Println("------------------------------------------------")
+		if reflect.DeepEqual(pk.Result, pk2.Result) {
+			t.Error(err, "Generate check failed. Result not the same.", buff[:n], ge.Result)
 		}
 	}
 }

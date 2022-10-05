@@ -32,3 +32,13 @@ func ByteToUint32(data []byte) uint32 {
 	return (uint32(Byte2ToUint16(data[0], data[1])) << uint32(BYTE_OFFSET) << uint32(BYTE_OFFSET)) +
 		uint32(Byte2ToUint16(data[2], data[3]))
 }
+
+func Uint16ToByte(data uint16) (byte, byte) {
+	return byte(data >> BYTE_OFFSET), byte(data & ((1 << BYTE_OFFSET) - 1))
+}
+
+func Uint32ToByte(data uint32) (byte, byte, byte, byte) {
+	a, b := Uint16ToByte(uint16(data >> uint32(BYTE_OFFSET) >> uint32(BYTE_OFFSET)))
+	c, d := Uint16ToByte(uint16(data & uint32((1<<BYTE_OFFSET<<BYTE_OFFSET)-1)))
+	return a, b, c, d
+}

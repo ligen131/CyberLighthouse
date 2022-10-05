@@ -202,3 +202,11 @@ Domain Name System (query)
 ```shell
 $ go test CyberLighthouse/packet -v
 ```
+
+Day 5
+
+`Generator` 还挺好写的，依葫芦画瓢就是了。
+
+添加单元测试。
+
+至此阶段二基本完成。
