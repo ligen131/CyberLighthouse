@@ -6,13 +6,20 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 )
 
 type ServerFlags struct {
 	IsRecursion bool
 }
 
+type ServerCacheRecord struct {
+	RecordA     packet.PacketRecords
+	expiredTime time.Time
+}
+
 type Server struct {
+	cache map[string]([]ServerCacheRecord)
 }
 
 var rootServer []net.IP = []net.IP{
@@ -29,6 +36,45 @@ var rootServer []net.IP = []net.IP{
 	net.ParseIP("192.52.178.30"),
 	net.ParseIP("192.41.162.30"),
 	net.ParseIP("192.55.83.30"),
+}
+
+func (s *Server) addCache(url string, r packet.PacketRecords) {
+	if url == "" {
+		url = "."
+	}
+	if url[len(url)-1] != '.' {
+		url += "."
+	}
+	if s.cache[url] == nil {
+		s.cache[url] = []ServerCacheRecord{}
+	}
+	s.cache[url] = append(s.cache[url], ServerCacheRecord{r, time.Now().Add(time.Second * time.Duration(r.R_TimeToLive))})
+}
+
+func (s *Server) queryCache(url string) ([]packet.PacketRecords, error) {
+	if url == "" {
+		url = "."
+	}
+	if url[len(url)-1] != '.' {
+		url += "."
+	}
+	tmp := s.cache[url]
+	ans := []packet.PacketRecords{}
+	for i := range tmp {
+		if tmp[i].expiredTime.After(time.Now()) {
+			ans = append(ans, tmp[i].RecordA)
+		}
+	}
+	if len(ans) == 0 {
+		return ans, errors.New("Cache not found or have expired.")
+	}
+	return ans, nil
+}
+
+func (s *Server) addManyCache(r *[]packet.PacketRecords) {
+	for i := range *r {
+		s.addCache((*r)[i].R_Name, (*r)[i])
+	}
 }
 
 func (s *Server) checkPacketRecords(r *[]packet.PacketRecords, send *packet.PacketGenerator, currentServer net.IP) error {
@@ -72,6 +118,13 @@ func (s *Server) nextRecuFromA(r *[]packet.PacketRecords, send *packet.PacketGen
 func (s *Server) nextRecuFromNS(r *[]packet.PacketRecords, send *packet.PacketGenerator, currentServer net.IP, isRecursion bool) error {
 	for i := range *r {
 		if (*r)[i].R_Type == packet.RECORD_NS {
+			cache, err := s.queryCache((*r)[i].R_Data.R_NS_Name)
+			if err == nil {
+				s.nextRecuFromA(&cache, send, currentServer, isRecursion)
+				if send.Pkt.P_Header.H_AnswerRRs != 0 {
+					return nil
+				}
+			}
 			c := client.Client{}
 			clientFlags := client.ClientFlags{
 				F_Record:      packet.RECORD_A,
@@ -84,18 +137,35 @@ func (s *Server) nextRecuFromNS(r *[]packet.PacketRecords, send *packet.PacketGe
 				continue
 			}
 
+			s.addManyCache(&recv.Result.P_Answers)
+			s.addManyCache(&recv.Result.P_Authority)
+			s.addManyCache(&recv.Result.P_Additional)
+
 			s.nextRecuFromA(&recv.Result.P_Answers, send, currentServer, isRecursion)
 			s.nextRecuFromA(&recv.Result.P_Authority, send, currentServer, isRecursion)
 			s.nextRecuFromA(&recv.Result.P_Additional, send, currentServer, isRecursion)
-			if send.Pkt.P_Header.H_AnswerRRs != 0 {
-				return nil
-			}
+		}
+		if send.Pkt.P_Header.H_AnswerRRs != 0 {
+			return nil
 		}
 	}
 	return errors.New("Record not found.")
 }
 
 func (s *Server) recursion(send *packet.PacketGenerator, currentServer net.IP, isRecursion bool) error {
+	cache, err := s.queryCache(send.Pkt.P_Queries[0].Q_Name)
+	if send.Pkt.P_Queries[0].Q_Type == packet.RECORD_A && err == nil {
+		s.checkPacketRecords(&cache, send, currentServer)
+		if send.Pkt.P_Header.H_AnswerRRs != 0 {
+			send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
+			return nil
+		}
+		s.nextRecuFromA(&cache, send, currentServer, isRecursion)
+		if send.Pkt.P_Header.H_AnswerRRs != 0 {
+			send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
+			return nil
+		}
+	}
 	c := client.Client{}
 	clientFlags := client.ClientFlags{
 		F_Record:      send.Pkt.P_Queries[0].Q_Type,
@@ -109,6 +179,10 @@ func (s *Server) recursion(send *packet.PacketGenerator, currentServer net.IP, i
 		send.Pkt.P_Header.H_Flags.F_rcode = recv.Result.P_Header.H_Flags.F_rcode
 		return err
 	}
+
+	s.addManyCache(&recv.Result.P_Answers)
+	s.addManyCache(&recv.Result.P_Authority)
+	s.addManyCache(&recv.Result.P_Additional)
 
 	if !isRecursion {
 		send.Pkt.P_Header.H_QueriesCount = recv.Result.P_Header.H_QueriesCount
@@ -187,6 +261,7 @@ func (s *Server) Execute(size int, addr net.Addr, data []byte, f ServerFlags, so
 }
 
 func (s *Server) Start(f ServerFlags) {
+	s.cache = make(map[string]([]ServerCacheRecord))
 	addr := net.UDPAddr{
 		Port: 53,
 		IP:   net.IPv4(127, 0, 0, 1),

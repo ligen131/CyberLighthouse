@@ -54,7 +54,7 @@ GNU General Public License v3.0
 | 阶段 3 | DNS Client【进阶】支持 AAAA MX | ✅ | Day 5 |
 | 阶段 3 | DNS Client【进阶】支持 TCP | ❌ | -- |
 | 阶段 4 | DNS Server 递归查询 | ✅ | Day 6 |
-| 阶段 4 | DNS Server 缓存 | ❌ | -- |
+| 阶段 4 | DNS Server 缓存 | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】支持 AAAA MX | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】缓存改存储 | ❌ | -- |
 | 阶段 4 | DNS Server【进阶】支持递归查询开关 | ✅ | Day 6 |
@@ -442,3 +442,26 @@ ligen131.com.           172800  IN      NS      duet.dnspod.net.
 即使 `dig aaaa google.com` 也不会返回正确结果。
 
 至于后面缓存改存储，初步想法是用数据库（MongoDB）解决，而数据库读写不需要考虑并发锁啥的（文件才要），所以应该也好写。
+
+添加缓存
+
+```shell
+$ dig ligen131.com @localhost
+$ dig ligen131.com @localhost
+$ dig ligen131.com @localhost
+# 服务端输出
+Listening on 127.0.0.1:53...
+[Server] Read package from 127.0.0.1:61079, length = 53
+[Client] Receive UDP package from 192.5.6.30:53, length = 78
+[Client] Receive UDP package from 192.5.6.30:53, length = 208
+[Client] Receive UDP package from 1.12.0.29:53, length = 108
+[Client] Receive UDP package from 117.89.178.226:53, length = 104
+[Server] Read package from 127.0.0.1:61086, length = 53
+[Server] Read package from 127.0.0.1:61089, length = 53
+```
+
+目前暂时用 `map` 存在内存里。
+
+至此，阶段四的基本任务也完成了。
+
+三个进阶任务 `AAAA MX` 都是从一开始就顺手写了的。
