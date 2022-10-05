@@ -53,14 +53,14 @@ GNU General Public License v3.0
 | 阶段 3 | DNS Client | ✅ | Day 5 |
 | 阶段 3 | DNS Client【进阶】支持 AAAA MX | ✅ | Day 5 |
 | 阶段 3 | DNS Client【进阶】支持 TCP | ❌ | -- |
-| 阶段 4 | DNS Server 非递归查询 | ❌ | -- |
-| 阶段 4 | DNS Server 递归查询 | ❌ | -- |
-| 阶段 4 | DNS Server【进阶】支持 AAAA MX | ❌ | -- |
+| 阶段 4 | DNS Server 递归查询 | ✅ | Day 6 |
+| 阶段 4 | DNS Server 缓存 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持 AAAA MX | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】缓存改存储 | ❌ | -- |
-| 阶段 4 | DNS Server【进阶】支持递归查询开关 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持递归查询开关 | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】支持 TCP | ❌ | -- |
 | 阶段 4 | DNS Server【进阶】支持协议更换 | ❌ | -- |
-| 阶段 4 | DNS Server【进阶】支持并发 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持并发 | ✅ | Day 6 |
 
 ### Task 1
 
@@ -326,3 +326,119 @@ Domain Name System (response)
 ```
 
 第三阶段基本完成。TCP 也许是直接调用 GO 的 TCP 接口就 OK？后面再研究研究。
+
+### Task 4
+
+> 就快完成 Cyber Lighthouse 啦！
+
+Day 6
+
+凌晨了，算 Day 6 吧。
+
+写完 `Server` 发现表里面四个任务全都可以打勾了。
+
+有一些记录 `dig` 也查不了，就不管了（比如 `dig aaaa google.com`）。
+
+服务端启动
+
+```shell
+$ cd server
+$ go build -o digd main.go
+$ ./digd # 默认开启可递归查询模式
+$ ./digd --recursion=false # 关闭可递归查询模式
+```
+
+使用 `dig` 测试
+
+```shell
+$ dig google.com @localhost
+$ dig mx google.com @localhost
+$ dig aaaa ns1.google.com @localhost
+$ dig ns google.com @localhost
+$ dig cname mc.ligen131.com @localhost
+$ dig txt google.com @localhost # 惊讶地发现这玩意还能查其他的记录嘿嘿
+```
+
+输出示例
+
+开启递归模式：
+
+```shell
+$ dig google.com @localhost
+# 服务端输出
+Listening on 127.0.0.1:53...
+[Server] Read package from 127.0.0.1:62103, length = 51
+[Client] Receive UDP package from 192.5.6.30:53, length = 54
+# dig 输出
+; <<>> DiG 9.16.1-Ubuntu <<>> google.com @localhost
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 44151
+;; flags: qr rd ra ad; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;google.com.                    IN      A
+
+;; ANSWER SECTION:
+google.com.             60      IN      A       46.82.174.69
+
+;; Query time: 39 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Thu Oct 06 02:22:22 CST 2022
+;; MSG SIZE  rcvd: 54
+```
+
+关闭递归模式：
+
+```shell
+$ dig ligen131.com @localhost
+# 服务端输出
+Listening on 127.0.0.1:53...
+[Server] Read package from 127.0.0.1:56638, length = 53
+[Client] Receive UDP package from 192.5.6.30:53, length = 78
+[Client] Receive UDP package from 192.33.14.30:53, length = 78
+[Client] Receive UDP package from 192.26.92.30:53, length = 78
+[Client] Receive UDP package from 192.31.80.30:53, length = 78
+[Client] Receive UDP package from 192.12.94.30:53, length = 78
+[Client] Receive UDP package from 192.35.51.30:53, length = 78
+[Client] Receive UDP package from 192.42.93.30:53, length = 78
+[Client] Receive UDP package from 192.54.112.30:53, length = 78
+[Client] Receive UDP package from 192.43.172.30:53, length = 78
+[Client] Receive UDP package from 192.48.79.30:53, length = 78
+[Client] Receive UDP package from 192.52.178.30:53, length = 78
+[Client] Receive UDP package from 192.41.162.30:53, length = 78
+[Client] Receive UDP package from 192.55.83.30:53, length = 78
+# dig 输出
+; <<>> DiG 9.16.1-Ubuntu <<>> ligen131.com @localhost
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 8893
+;; flags: qr rd ad; QUERY: 1, ANSWER: 0, AUTHORITY: 2, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;ligen131.com.                  IN      A
+
+;; AUTHORITY SECTION:
+ligen131.com.           172800  IN      NS      buck.dnspod.net.
+ligen131.com.           172800  IN      NS      duet.dnspod.net.
+
+;; Query time: 2536 msec
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Thu Oct 06 02:24:05 CST 2022
+;; MSG SIZE  rcvd: 112
+```
+
+关闭递归模式后返回 `NS` 而非 `A` 。
+
+从服务端输出记录可以看出递归查询。
+
+至于并发，就只是在 `ExecuteFunction()` 前面加了个 `go` 开启多线程，如果这也算进阶？🤔还是对题目理解有误？
+
+因为 `dig aaaa google.com @localhost` 会递归很久才返回结果，所以没有并发的结果是执行一条该命令就会卡住不动，开启并发后会对每条命令各开一个线程查询，实现并发。
+
+解决上述卡住问题：在 `Client` 处设置了 I/O 超时时间。现在即使不开启并发也不会卡住了（可能是谷歌被墙问题）。
+
+即使 `dig aaaa google.com` 也不会返回正确结果。
+
+至于后面缓存改存储，初步想法是用数据库（MongoDB）解决，而数据库读写不需要考虑并发锁啥的（文件才要），所以应该也好写。

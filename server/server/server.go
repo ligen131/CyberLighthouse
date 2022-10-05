@@ -1,0 +1,207 @@
+package server
+
+import (
+	"CyberLighthouse/packet"
+	"client/client"
+	"errors"
+	"fmt"
+	"net"
+)
+
+type ServerFlags struct {
+	IsRecursion bool
+}
+
+type Server struct {
+}
+
+var rootServer []net.IP = []net.IP{
+	net.ParseIP("192.5.6.30"),
+	net.ParseIP("192.33.14.30"),
+	net.ParseIP("192.26.92.30"),
+	net.ParseIP("192.31.80.30"),
+	net.ParseIP("192.12.94.30"),
+	net.ParseIP("192.35.51.30"),
+	net.ParseIP("192.42.93.30"),
+	net.ParseIP("192.54.112.30"),
+	net.ParseIP("192.43.172.30"),
+	net.ParseIP("192.48.79.30"),
+	net.ParseIP("192.52.178.30"),
+	net.ParseIP("192.41.162.30"),
+	net.ParseIP("192.55.83.30"),
+}
+
+func (s *Server) checkPacketRecords(r *[]packet.PacketRecords, send *packet.PacketGenerator, currentServer net.IP) error {
+	for i := range *r {
+		if (*r)[i].R_Name == send.Pkt.P_Queries[0].Q_Name {
+			if (*r)[i].R_Type == send.Pkt.P_Queries[0].Q_Type {
+				send.Pkt.P_Header.H_AnswerRRs++
+				send.Pkt.P_Answers = append(send.Pkt.P_Answers, (*r)[i])
+			}
+		}
+	}
+	if send.Pkt.P_Header.H_AnswerRRs != 0 {
+		return nil
+	}
+	return errors.New("Record not found.")
+}
+
+func (s *Server) nextRecuFromA(r *[]packet.PacketRecords, send *packet.PacketGenerator, currentServer net.IP, isRecursion bool) error {
+	for i := range *r {
+		if (*r)[i].R_Type == packet.RECORD_A || (*r)[i].R_Type == packet.RECORD_AAAA {
+			addr := net.IP{}
+			if (*r)[i].R_Type == packet.RECORD_A {
+				addr = net.IPv4((*r)[i].R_Data.R_A_IP[0], (*r)[i].R_Data.R_A_IP[1],
+					(*r)[i].R_Data.R_A_IP[2], (*r)[i].R_Data.R_A_IP[3])
+			} else {
+				addr = net.ParseIP(fmt.Sprintf("%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
+					(*r)[i].R_Data.R_AAAA_IP[0], (*r)[i].R_Data.R_AAAA_IP[1],
+					(*r)[i].R_Data.R_AAAA_IP[2], (*r)[i].R_Data.R_AAAA_IP[3],
+					(*r)[i].R_Data.R_AAAA_IP[4], (*r)[i].R_Data.R_AAAA_IP[5],
+					(*r)[i].R_Data.R_AAAA_IP[6], (*r)[i].R_Data.R_AAAA_IP[7]))
+			}
+			s.recursion(send, addr, isRecursion)
+			if send.Pkt.P_Header.H_AnswerRRs != 0 {
+				return nil
+			}
+		}
+	}
+	return errors.New("Record not found.")
+}
+
+func (s *Server) nextRecuFromNS(r *[]packet.PacketRecords, send *packet.PacketGenerator, currentServer net.IP, isRecursion bool) error {
+	for i := range *r {
+		if (*r)[i].R_Type == packet.RECORD_NS {
+			c := client.Client{}
+			clientFlags := client.ClientFlags{
+				F_Record:      packet.RECORD_A,
+				F_Server:      currentServer,
+				F_Url:         (*r)[i].R_Data.R_NS_Name,
+				F_IsRecursion: isRecursion,
+			}
+			recv, _, _, err := c.SendQuery(&clientFlags)
+			if err != nil {
+				continue
+			}
+
+			s.nextRecuFromA(&recv.Result.P_Answers, send, currentServer, isRecursion)
+			s.nextRecuFromA(&recv.Result.P_Authority, send, currentServer, isRecursion)
+			s.nextRecuFromA(&recv.Result.P_Additional, send, currentServer, isRecursion)
+			if send.Pkt.P_Header.H_AnswerRRs != 0 {
+				return nil
+			}
+		}
+	}
+	return errors.New("Record not found.")
+}
+
+func (s *Server) recursion(send *packet.PacketGenerator, currentServer net.IP, isRecursion bool) error {
+	c := client.Client{}
+	clientFlags := client.ClientFlags{
+		F_Record:      send.Pkt.P_Queries[0].Q_Type,
+		F_Server:      currentServer,
+		F_Url:         send.Pkt.P_Queries[0].Q_Name,
+		F_IsRecursion: isRecursion,
+	}
+	recv, _, _, err := c.SendQuery(&clientFlags)
+
+	if err != nil {
+		send.Pkt.P_Header.H_Flags.F_rcode = recv.Result.P_Header.H_Flags.F_rcode
+		return err
+	}
+
+	if !isRecursion {
+		send.Pkt.P_Header.H_QueriesCount = recv.Result.P_Header.H_QueriesCount
+		send.Pkt.P_Header.H_AnswerRRs = recv.Result.P_Header.H_AnswerRRs
+		send.Pkt.P_Header.H_AuthorityRRs = recv.Result.P_Header.H_AuthorityRRs
+		send.Pkt.P_Header.H_AdditionalRRs = recv.Result.P_Header.H_AdditionalRRs
+		send.Pkt.P_Answers = recv.Result.P_Answers
+		send.Pkt.P_Authority = recv.Result.P_Authority
+		send.Pkt.P_Additional = recv.Result.P_Additional
+		return nil
+	}
+
+	s.checkPacketRecords(&recv.Result.P_Answers, send, currentServer)
+	s.checkPacketRecords(&recv.Result.P_Authority, send, currentServer)
+	s.checkPacketRecords(&recv.Result.P_Additional, send, currentServer)
+	if send.Pkt.P_Header.H_AnswerRRs != 0 {
+		send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
+		return nil
+	}
+
+	s.nextRecuFromA(&recv.Result.P_Answers, send, currentServer, isRecursion)
+	s.nextRecuFromA(&recv.Result.P_Authority, send, currentServer, isRecursion)
+	s.nextRecuFromA(&recv.Result.P_Additional, send, currentServer, isRecursion)
+	if send.Pkt.P_Header.H_AnswerRRs != 0 {
+		send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
+		return nil
+	}
+
+	s.nextRecuFromNS(&recv.Result.P_Answers, send, currentServer, isRecursion)
+	s.nextRecuFromNS(&recv.Result.P_Authority, send, currentServer, isRecursion)
+	s.nextRecuFromNS(&recv.Result.P_Additional, send, currentServer, isRecursion)
+	if send.Pkt.P_Header.H_AnswerRRs != 0 {
+		send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
+		return nil
+	}
+
+	return errors.New("Record not found.")
+}
+
+func (s *Server) Execute(size int, addr net.Addr, data []byte, f ServerFlags, socket *net.UDPConn) {
+	fmt.Printf("[Server] Read package from %s, length = %d\n", addr.String(), size)
+	pkt := packet.PacketParser{OriginData: data}
+	err := pkt.Parse()
+	if err != nil {
+		fmt.Printf("Error when parsing UDP package. error info = %s\n", err.Error())
+		return
+	}
+
+	send := packet.PacketGenerator{Pkt: pkt.Result}
+	send.Pkt.P_Header.H_Flags.F_QR = true
+	send.Pkt.P_Header.H_Flags.F_RA = f.IsRecursion
+	send.Pkt.P_Header.H_AnswerRRs = 0
+	send.Pkt.P_Header.H_AuthorityRRs = 0
+	send.Pkt.P_Header.H_AdditionalRRs = 0
+	send.Pkt.P_Answers = []packet.PacketRecords{}
+	send.Pkt.P_Authority = []packet.PacketRecords{}
+	send.Pkt.P_Additional = []packet.PacketRecords{}
+	for i := range rootServer {
+		s.recursion(&send, rootServer[i], f.IsRecursion)
+		if send.Pkt.P_Header.H_AnswerRRs != 0 {
+			break
+		}
+	}
+
+	err = send.Generator()
+	if err != nil {
+		fmt.Printf("Error while generating sending package. error info = %s\n", err.Error())
+		return
+	}
+
+	_, err = socket.WriteTo(send.Result, addr)
+	if err != nil {
+		fmt.Printf("Error while write UDP package to %s error info = %s\n", addr.String(), err.Error())
+		return
+	}
+}
+
+func (s *Server) Start(f ServerFlags) {
+	addr := net.UDPAddr{
+		Port: 53,
+		IP:   net.IPv4(127, 0, 0, 1),
+	}
+	socket, _ := net.ListenUDP("udp", &addr)
+	defer socket.Close()
+	fmt.Printf("Listening on %s:%d...\n", addr.IP.String(), addr.Port)
+
+	for {
+		tmp := make([]byte, 4096)
+		n, addr, err := socket.ReadFrom(tmp)
+		if err != nil {
+			fmt.Printf("UDP read error, error info = %s\n", err.Error())
+			continue
+		}
+		go s.Execute(n, addr, tmp, f, socket)
+	}
+}

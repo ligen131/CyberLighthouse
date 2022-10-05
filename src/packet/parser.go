@@ -100,6 +100,9 @@ func (p *PacketParser) parseName(startIndex int) (string, int, error) {
 	if endIndex == -1 {
 		endIndex = i + 1
 	}
+	if len(ans) > 0 && ans[len(ans)-1] != '.' {
+		ans += "."
+	}
 	if ans == "" {
 		ans = "<Root>"
 	}
