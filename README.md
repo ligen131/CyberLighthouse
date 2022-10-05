@@ -50,8 +50,8 @@ GNU General Public License v3.0
 | 阶段 2 | 解析器【进阶】 支持 AAAA MX | ✅ | Day 4 |
 | 阶段 2 | DNS 报文生成器 | ✅ | Day 5 |
 | 阶段 2 | 生成器【进阶】 支持 AAAA MX | ✅ | Day 5 |
-| 阶段 3 | DNS Client | ❌ | -- |
-| 阶段 3 | DNS Client【进阶】支持 AAAA MX | ❌ | -- |
+| 阶段 3 | DNS Client | ✅ | Day 5 |
+| 阶段 3 | DNS Client【进阶】支持 AAAA MX | ✅ | Day 5 |
 | 阶段 3 | DNS Client【进阶】支持 TCP | ❌ | -- |
 | 阶段 4 | DNS Server 非递归查询 | ❌ | -- |
 | 阶段 4 | DNS Server 递归查询 | ❌ | -- |
@@ -262,3 +262,25 @@ spf13/cobra: <https://github.com/spf13/cobra>
 既然任务书说了可以用命令行支持库，那直接用 `cobra` ，就不手动解析了。
 
 收发 UDP 包其实在上一阶段就用到了。
+
+`Client` 其实也不难实现，测试的时候发现发一个包到 `8.8.8.8` 会接收到两个包，但是默认只能解析第一个包。
+
+这好像没法解决，然后试了下 `dig google.com @8.8.8.8` ，发现他也只解析第一个包。那不管了。
+
+递归查询好像就是把包的 `Header Flag RD` 修改了一下，但好像没有什么效果。
+
+构建后测试：
+
+```shell
+$ cd client
+$ go build -o digg main.go
+$ ./digg
+$ ./digg -h
+$ ./digg google.com
+$ ./digg A google.com --recursion=false --server=202.114.0.131
+$ ./digg MX google.com --server=202.114.0.131
+$ ./digg NS google.com --server=202.114.0.131
+$ ./digg CNAME mc.ligen131.com
+$ ./digg AAAA ns1.google.com
+$ ./digg NS .
+```
