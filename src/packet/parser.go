@@ -183,14 +183,14 @@ func (p *PacketParser) parsePacketRecordData(r *PacketRecords) (PacketRecordData
 		{
 			// IPv6 Address. Format = ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
 			ans.R_AAAA_IP = [8]uint16{
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex : r.R_dataStartIndex+1]),
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+2 : r.R_dataStartIndex+3]),
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+4 : r.R_dataStartIndex+5]),
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+6 : r.R_dataStartIndex+7]),
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+8 : r.R_dataStartIndex+9]),
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+10 : r.R_dataStartIndex+11]),
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+12 : r.R_dataStartIndex+13]),
-				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+14 : r.R_dataStartIndex+15]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex : r.R_dataStartIndex+2]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+2 : r.R_dataStartIndex+4]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+4 : r.R_dataStartIndex+6]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+6 : r.R_dataStartIndex+8]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+8 : r.R_dataStartIndex+10]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+10 : r.R_dataStartIndex+12]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+12 : r.R_dataStartIndex+14]),
+				util.ByteToUint16(p.OriginData[r.R_dataStartIndex+14 : r.R_dataStartIndex+16]),
 			}
 		}
 	default:
@@ -369,7 +369,7 @@ func (p *PacketParser) outputRecords(r *PacketRecords) (string, error) {
 	return ans, nil
 }
 
-func (p *PacketParser) Output() error {
+func (p *PacketParser) Output() (string, error) {
 	ans := "Domain Name System "
 	req := p.Result.P_Header.H_Flags.F_QR
 	if req {
@@ -477,7 +477,7 @@ func (p *PacketParser) Output() error {
 			ans += fmt.Sprintf("		[%d] answers\n", i)
 			s, err := p.outputRecords(&p.Result.P_Answers[i])
 			if err != nil {
-				return err
+				return ans, err
 			}
 			ans += s
 		}
@@ -488,7 +488,7 @@ func (p *PacketParser) Output() error {
 			ans += fmt.Sprintf("		[%d] authoritative nameservers\n", i)
 			s, err := p.outputRecords(&p.Result.P_Authority[i])
 			if err != nil {
-				return err
+				return ans, err
 			}
 			ans += s
 		}
@@ -499,13 +499,12 @@ func (p *PacketParser) Output() error {
 			ans += fmt.Sprintf("		[%d] additional records\n", i)
 			s, err := p.outputRecords(&p.Result.P_Additional[i])
 			if err != nil {
-				return err
+				return ans, err
 			}
 			ans += s
 		}
 	}
 	// ------------------ Records End ------------------
 
-	fmt.Println(ans)
-	return nil
+	return ans, nil
 }

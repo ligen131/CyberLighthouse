@@ -45,10 +45,12 @@ func main() {
 		if err != nil {
 			util.ErrorPrint(err, tmp, "Parse failed.")
 		} else {
-			err = pk.Output()
+			var s string
+			s, err = pk.Output()
 			if err != nil {
 				util.ErrorPrint(err, tmp, "Output failed.")
 			}
+			fmt.Println(s)
 		}
 
 		var ge packet.PacketGenerator

@@ -34,13 +34,15 @@ func TestParser(t *testing.T) {
 		var pk packet.PacketParser
 		pk.OriginData = buff
 		err = pk.Parse()
+		var s string
 		if err != nil {
 			t.Error(err, "Parse failed.")
 		} else {
-			err = pk.Output()
+			s, err = pk.Output()
 			if err != nil {
 				t.Error(err, "Output failed.")
 			}
+			fmt.Println(s)
 		}
 	}
 }
@@ -78,17 +80,20 @@ func TestGenerator(t *testing.T) {
 			t.Error(err, "Parse2 failed.")
 		}
 		fmt.Println("------------------------------------------------")
-		err = pk.Output()
+		var s1, s2 string
+		s1, err = pk.Output()
 		if err != nil {
 			t.Error(err, "Output failed.")
 		}
-		err = pk2.Output()
+		s2, err = pk2.Output()
 		if err != nil {
 			t.Error(err, "Output2 failed.")
 		}
+		fmt.Println(s1)
+		fmt.Println(s2)
 		fmt.Println("------------------------------------------------")
-		if reflect.DeepEqual(pk.Result, pk2.Result) {
-			t.Error(err, "Generate check failed. Result not the same.", buff[:n], ge.Result)
+		if reflect.DeepEqual(pk.Result, pk2.Result) || s1 != s2 {
+			t.Error(err, "Generate check failed. Result not the same.\n", buff[:n], "\n", ge.Result)
 		}
 	}
 }
