@@ -284,3 +284,45 @@ $ ./digg CNAME mc.ligen131.com
 $ ./digg AAAA ns1.google.com
 $ ./digg NS .
 ```
+
+输出示例
+
+```shell
+$ ./digg MX google.com --server=202.114.0.131
+Receive data from 202.114.0.131:53, UDP package length = 49
+The query result:
+---------------------------------
+Domain Name System (response)
+        Transaction ID: 0x17c0
+        Flags:
+                Response: Message is a response
+                Opcode: Standard query (0)
+                Authoritative: Server is not an authority for domain
+                Truncated: Message is not truncated
+                Recursion desired: Do query recursively
+                Recursion available: Server can do recursive queries
+                Z: reserved (0)
+                Answer authenticated: Answer/authority portion was not authenticated by the server
+                Non-authenticated data: Unacceptable
+                Reply code: No error (0)
+        Questions: 1
+        Answer RRs: 1
+        Authority RRs: 0
+        Additional RRs: 0
+        Queries:
+                [0] queries
+                        Name: google.com
+                        Type: MX (15)
+                        Class: IN (0x0001)
+        Answers:
+                [0] answers
+                        Name: google.com
+                        Type: MX (15)
+                        Class: IN (0x0001)
+                        Time to live: 3600
+                        Data length: 9
+                        Mail Exchange: Preference: 10; Name: smtp.google.com
+---------------------------------
+```
+
+第三阶段基本完成。TCP 也许是直接调用 GO 的 TCP 接口就 OK？后面再研究研究。
