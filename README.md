@@ -1,43 +1,108 @@
 # Cyber Lighthouse
 
+[![golang](https://img.shields.io/badge/%3C%2F%3E-golang-blue)](https://github.com/golang/go)
+[![cobra](https://img.shields.io/badge/Powered%20by-cobra-brightgreen)](https://github.com/spf13/cobra)
+
 A simple DNS query client (likes command `dig` in linux) and server (local cache server), including a light DNS message parser and generator.
 
-## Usage
+## Feature
+
+The project includes client and server, powered by a light DNS message parser and generator.
+
+Both client and server support net connection through UDP, and the following DNS records.
+
+```
+A
+NS
+CNAME
+AAAA
+MX
+```
+
+The client can customize the DNS query server, and can also define whether to enable recursive query. 
+
+The server can customize whether to enable recursive query and support concurrent query.
+
+## Build
+
+Download all dependencies.
 
 ```shell
 $ cd src
 $ go mod download
-$ go run main.go
+$ cd ../client
+$ go mod download
+$ cd ../server
+$ go mod download
+$ cd ..
+```
+
+Build client and server.
+
+```shell
+$ mkdir build
+$ cd client
+$ go build -o ../build/digg main.go
+$ cd ../server
+$ go build -o ../build/digd main.go
+$ cd ..
+```
+
+The built file is generated into `build` folder.
+
+All in one command
+
+```shell
+$ mkdir build; cd src; go mod download; cd ../client; go mod download; go build -o ../build/digg main.go; cd ../server; go mod download; go build -o ../build/digd main.go; cd ..
+```
+
+## Usage
+
+### Server
+
+After building, run the following command to start server.
+
+```shell
+$ cd build
+$ ./digd
 ```
 
 It will listening on `localhost:53`.
 
-Run following command to execute parser and generator.
+You can test the server by running the following command.
 
 ```shell
 $ dig google.com @localhost
 ```
 
-## Build
+### Client
+
+Likes `dig` command, there are some examples to use the client.
 
 ```shell
-$ mkdir build
-$ cd src
-$ go build main.go -o ../build/digg
+$ cd build
+$ ./digg google.com
+$ ./digg NS google.com --server=114.114.114.114 # Define DNS server by yourself
+$ ./digg A google.com --server=192.5.6.30 --recursion=false # Do query without recursion
+$ ./digg -h # Output help list
 ```
-
-The built file is generated into `build` folder.
 
 ## Testing
 
+Unit tests cover `Parser` and `Generator` only.
+
 ```shell
 $ cd src
-$ go test CyberLighthouse -v
+$ go test CyberLighthouse/packet -v
 ```
+
+`Generator` is using `Parser` to check the validation of data.
 
 ## LICENSE
 
 GNU General Public License v3.0
+
+-----
 
 ## Project Logs
 
