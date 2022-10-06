@@ -2,6 +2,7 @@
 
 [![golang](https://img.shields.io/badge/%3C%2F%3E-golang-blue)](https://github.com/golang/go)
 [![cobra](https://img.shields.io/badge/Powered%20by-cobra-brightgreen)](https://github.com/spf13/cobra)
+[![mongodb](https://img.shields.io/badge/Powered%20by-mongodb-brightgreen)](https://github.com/mongodb/mongo)
 
 A simple DNS query client (likes command `dig` in linux) and server (local cache server), including a light DNS message parser and generator.
 
@@ -21,7 +22,7 @@ MX
 
 The client can customize the DNS query server, and can also define whether to enable recursive query. 
 
-The server can customize whether to enable recursive query and support concurrent query. It can also cache recent A record queries.
+The server can customize whether to enable recursive query and support concurrent query. It can also cache recent A record queries through database.
 
 ## Build
 
@@ -68,6 +69,8 @@ $ ./digd
 ```
 
 It will listening on `localhost:53`.
+
+If you want to use database to cache A records, please install MongoDB first.
 
 You can test the server by running the following command.
 
@@ -589,6 +592,8 @@ MongoDB 参考：Go语言操作mongoDB <https://www.liwenzhou.com/posts/Go/go_mo
 
 ```shell
 $ dig qq.com @localhost
+$ dig qq.com @localhost
+$ dig qq.com @localhost # 重启服务端后
 # 服务端输出
 Listening on 127.0.0.1:53...
 [Server] Read package from 127.0.0.1:51307, length = 47
@@ -600,6 +605,15 @@ Listening on 127.0.0.1:53...
 [Client] Receive UDP package from 101.89.19.165:53, length = 160
 [Server] Read package from 127.0.0.1:51312, length = 47
 [MongoDB] Clean 0 expired records.
+Read cache qq.com., len = 4
+[183 3 226 35]
+[203 205 254 157]
+[123 151 137 18]
+[61 129 7 47]
+# 重启服务端后
+Listening on 127.0.0.1:53...
+[Server] Read package from 127.0.0.1:55475, length = 47
+[MongoDB] Clean 3 expired records.
 Read cache qq.com., len = 4
 [183 3 226 35]
 [203 205 254 157]
