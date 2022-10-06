@@ -21,7 +21,7 @@ MX
 
 The client can customize the DNS query server, and can also define whether to enable recursive query. 
 
-The server can customize whether to enable recursive query and support concurrent query.
+The server can customize whether to enable recursive query and support concurrent query. It can also cache recent A record queries.
 
 ## Build
 
@@ -530,3 +530,53 @@ Listening on 127.0.0.1:53...
 至此，阶段四的基本任务也完成了。
 
 三个进阶任务 `AAAA MX` 都是从一开始就顺手写了的。
+
+昨晚过于匆忙 `push` 。进一步测试，修复一些 bug 。
+
+```shell
+$ dig buck.dnspod.net @localhost
+$ dig ligen131.com @localhost
+$ dig ligen131.com @localhost
+$ dig github.com @localhost
+$ dig github.com @localhost
+# 服务端输出
+Listening on 127.0.0.1:53...
+[Server] Read package from 127.0.0.1:53074, length = 56
+[Client] Receive UDP package from 192.5.6.30:53, length = 208
+[Client] Receive UDP package from 1.12.0.29:53, length = 167
+[Server] Read package from 127.0.0.1:55774, length = 53
+[Client] Receive UDP package from 192.5.6.30:53, length = 78
+Read cache buck.dnspod.net., len = 5
+[112 80 181 45]
+[120 241 130 98]
+[129 211 176 187]
+[1 12 0 4]
+[61 151 180 44]
+[Client] Receive UDP package from 112.80.181.45:53, length = 104
+[Server] Read package from 127.0.0.1:64660, length = 53
+Read cache ligen131.com., len = 1
+[1 12 241 26]
+[Server] Read package from 127.0.0.1:58341, length = 51
+[Client] Receive UDP package from 192.5.6.30:53, length = 267
+[Client] Receive UDP package from 205.251.193.165:53, length = 267
+[Server] Read package from 127.0.0.1:58346, length = 51
+Read cache github.com., len = 1
+[20 205 243 166]
+```
+
+用客户端测试
+
+```shell
+$ ./digg baidu.com --server=127.0.0.1
+$ ./digg baidu.com --server=127.0.0.1
+# 服务端输出
+[Server] Read package from 127.0.0.1:54384, length = 27
+[Client] Receive UDP package from 192.5.6.30:53, length = 285
+[Client] Receive UDP package from 220.181.33.31:53, length = 317
+[Server] Read package from 127.0.0.1:54387, length = 27
+Read cache baidu.com., len = 2
+[39 156 66 10]
+[110 242 68 66]
+```
+
+Timeout 机制好像需要改一改。

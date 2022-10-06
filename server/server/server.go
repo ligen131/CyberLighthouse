@@ -68,12 +68,18 @@ func (s *Server) queryCache(url string) ([]packet.PacketRecords, error) {
 	if len(ans) == 0 {
 		return ans, errors.New("Cache not found or have expired.")
 	}
+	fmt.Printf("Read cache %s, len = %d\n", url, len(ans))
+	for i := range ans {
+		fmt.Println(ans[i].R_Data.R_A_IP)
+	}
 	return ans, nil
 }
 
 func (s *Server) addManyCache(r *[]packet.PacketRecords) {
 	for i := range *r {
-		s.addCache((*r)[i].R_Name, (*r)[i])
+		if (*r)[i].R_Type == packet.RECORD_A {
+			s.addCache((*r)[i].R_Name, (*r)[i])
+		}
 	}
 }
 
