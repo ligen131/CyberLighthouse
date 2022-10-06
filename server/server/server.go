@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"server/database"
 	"time"
 )
 
@@ -19,8 +20,12 @@ type ServerCacheRecord struct {
 }
 
 type Server struct {
-	cache map[string]([]ServerCacheRecord)
+	cache            map[string]([]ServerCacheRecord)
+	d                database.DB
+	cacheUseDatabase bool
 }
+
+const dbName string = "DnsServer"
 
 var rootServer []net.IP = []net.IP{
 	net.ParseIP("192.5.6.30"),
@@ -45,10 +50,19 @@ func (s *Server) addCache(url string, r packet.PacketRecords) {
 	if url[len(url)-1] != '.' {
 		url += "."
 	}
-	if s.cache[url] == nil {
-		s.cache[url] = []ServerCacheRecord{}
+	if !s.cacheUseDatabase {
+		if s.cache[url] == nil {
+			s.cache[url] = []ServerCacheRecord{}
+		}
+		s.cache[url] = append(s.cache[url], ServerCacheRecord{r, time.Now().Add(time.Second * time.Duration(r.R_TimeToLive))})
+	} else {
+		tmp := database.DbRecordA{}
+		tmp.PacketRecordToDbRecord(&r)
+		err := s.d.AddRecordA(&tmp)
+		if err != nil {
+			fmt.Printf("[Cache] Error while add cache into database. error info = %s\n", err.Error())
+		}
 	}
-	s.cache[url] = append(s.cache[url], ServerCacheRecord{r, time.Now().Add(time.Second * time.Duration(r.R_TimeToLive))})
 }
 
 func (s *Server) queryCache(url string) ([]packet.PacketRecords, error) {
@@ -58,11 +72,27 @@ func (s *Server) queryCache(url string) ([]packet.PacketRecords, error) {
 	if url[len(url)-1] != '.' {
 		url += "."
 	}
-	tmp := s.cache[url]
 	ans := []packet.PacketRecords{}
-	for i := range tmp {
-		if tmp[i].expiredTime.After(time.Now()) {
-			ans = append(ans, tmp[i].RecordA)
+	if !s.cacheUseDatabase {
+		tmp := s.cache[url]
+		for i := range tmp {
+			if tmp[i].expiredTime.After(time.Now()) {
+				ans = append(ans, tmp[i].RecordA)
+			}
+		}
+	} else {
+		tmp, err := s.d.QueryRecords(url)
+		if err != nil {
+			fmt.Printf("[Cache] Error while query records in the database. error info = %s\n", err.Error())
+			return nil, err
+		}
+		for i := range tmp {
+			a, err := tmp[i].DbRecordToPacketRecord()
+			if err != nil {
+				fmt.Printf("[Cache] Record error. error info = %s\n", err.Error())
+				continue
+			}
+			ans = append(ans, a)
 		}
 	}
 	if len(ans) == 0 {
@@ -267,7 +297,14 @@ func (s *Server) Execute(size int, addr net.Addr, data []byte, f ServerFlags, so
 }
 
 func (s *Server) Start(f ServerFlags) {
-	s.cache = make(map[string]([]ServerCacheRecord))
+	err := s.d.ConnectToDB(dbName)
+	if err != nil {
+		fmt.Printf("Error while connecting to database, use cache in the memory. error info = %s", err.Error())
+		s.cacheUseDatabase = false
+		s.cache = make(map[string]([]ServerCacheRecord))
+	} else {
+		s.cacheUseDatabase = true
+	}
 	addr := net.UDPAddr{
 		Port: 53,
 		IP:   net.IPv4(127, 0, 0, 1),

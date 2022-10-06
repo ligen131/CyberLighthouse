@@ -121,7 +121,7 @@ GNU General Public License v3.0
 | 阶段 4 | DNS Server 递归查询 | ✅ | Day 6 |
 | 阶段 4 | DNS Server 缓存 | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】支持 AAAA MX | ✅ | Day 6 |
-| 阶段 4 | DNS Server【进阶】缓存改存储 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】缓存改存储 | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】支持递归查询开关 | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】支持 TCP | ❌ | -- |
 | 阶段 4 | DNS Server【进阶】支持协议更换 | ❌ | -- |
@@ -580,3 +580,29 @@ Read cache baidu.com., len = 2
 ```
 
 Timeout 机制好像需要改一改。
+
+MongoDB 参考：Go语言操作mongoDB <https://www.liwenzhou.com/posts/Go/go_mongodb/>
+
+完成缓存转存储，如果不支持数据库环境，则使用内存缓存。
+
+输出示例
+
+```shell
+$ dig qq.com @localhost
+# 服务端输出
+Listening on 127.0.0.1:53...
+[Server] Read package from 127.0.0.1:51307, length = 47
+[MongoDB] Clean 4 expired records.
+[Cache] Error while query records in the database. error info = MongoDB didn't find anything about qq.com.
+[Client] Receive UDP package from 192.5.6.30:53, length = 392
+[MongoDB] Clean 0 expired records.
+[Cache] Error while query records in the database. error info = MongoDB didn't find anything about qq.com.
+[Client] Receive UDP package from 101.89.19.165:53, length = 160
+[Server] Read package from 127.0.0.1:51312, length = 47
+[MongoDB] Clean 0 expired records.
+Read cache qq.com., len = 4
+[183 3 226 35]
+[203 205 254 157]
+[123 151 137 18]
+[61 129 7 47]
+```
