@@ -2,16 +2,21 @@ package server
 
 import (
 	"CyberLighthouse/packet"
+	"CyberLighthouse/util"
 	"client/client"
 	"errors"
 	"fmt"
 	"net"
 	"server/database"
 	"time"
+
+	"github.com/gogf/greuse"
 )
 
 type ServerFlags struct {
 	IsRecursion bool
+	TCPenable   bool
+	UDPenable   bool
 }
 
 type ServerCacheRecord struct {
@@ -261,12 +266,11 @@ func (s *Server) recursion(send *packet.PacketGenerator, currentServer net.IP, i
 	return errors.New("Record not found.")
 }
 
-func (s *Server) Execute(size int, addr net.Addr, data []byte, f ServerFlags, socket *net.UDPConn) {
-	fmt.Printf("[Server] Read package from %s, length = %d\n", addr.String(), size)
+func (s *Server) Execute(size int, addr net.Addr, data []byte, f ServerFlags, writeFunc func([]byte, net.Addr)) {
 	pkt := packet.PacketParser{OriginData: data}
 	err := pkt.Parse()
 	if err != nil {
-		fmt.Printf("Error when parsing UDP package. error info = %s\n", err.Error())
+		fmt.Printf("[Server] Error when parsing package. error info = %s\n", err.Error())
 		return
 	}
 
@@ -288,41 +292,106 @@ func (s *Server) Execute(size int, addr net.Addr, data []byte, f ServerFlags, so
 
 	err = send.Generator()
 	if err != nil {
-		fmt.Printf("Error while generating sending package. error info = %s\n", err.Error())
+		fmt.Printf("[Server] Error while generating sending package. error info = %s\n", err.Error())
 		return
 	}
 
-	_, err = socket.WriteTo(send.Result, addr)
+	if writeFunc != nil {
+		writeFunc(send.Result, addr)
+	} else {
+		fmt.Println("[Server] Error write package function is nil")
+	}
+}
+
+const listeningLocalAddr string = "127.0.0.1:53"
+
+func (s *Server) udpListen(f *ServerFlags) {
+	socket, err := greuse.ListenPacket("udp", listeningLocalAddr)
 	if err != nil {
-		fmt.Printf("Error while write UDP package to %s error info = %s\n", addr.String(), err.Error())
+		fmt.Printf("[Server] Error while UDP server listening %s, error info = %s\n", listeningLocalAddr, err.Error())
 		return
+	}
+	defer socket.Close()
+	fmt.Printf("[Server] UDP server listening on %s...\n", socket.LocalAddr().String())
+	for {
+		data := make([]byte, 4096)
+		n, addr, err := socket.ReadFrom(data)
+		if err != nil {
+			break
+		}
+		fmt.Printf("[Server] Read package from %s, length = %d\n", addr.String(), n)
+		go s.Execute(n, addr, data, *f, func(data []byte, addr net.Addr) {
+			_, err := socket.WriteTo(data, addr)
+			if err != nil {
+				fmt.Printf("[Server] Error while write UDP package to %s error info = %s\n", addr.String(), err.Error())
+			}
+		})
+	}
+}
+
+func (s *Server) tcpRead(socket net.Conn, f *ServerFlags) {
+	for {
+		data := make([]byte, 4096)
+		_, err := socket.Read(data)
+		if err != nil {
+			break
+		}
+		if len(data) < 2 {
+			continue
+		}
+		data = data[2:]
+		n := len(data)
+		fmt.Printf("[Server] Read TCP package from %s, length = %d\n", socket.RemoteAddr().String(), n)
+		go s.Execute(n, socket.RemoteAddr(), data, *f, func(data []byte, addr net.Addr) {
+			a, b := util.Uint16ToByte(uint16(len(data)))
+			tmp := []byte{a, b}
+			data = append(tmp, data...)
+			_, err := socket.Write(data)
+			if err != nil {
+				fmt.Printf("[Server] Error while write UDP package to %s error info = %s\n", addr.String(), err.Error())
+			}
+		})
+	}
+}
+
+func (s *Server) tcpListen(f *ServerFlags) {
+	listener, err := greuse.Listen("tcp", listeningLocalAddr)
+	if err != nil {
+		fmt.Printf("[Server] Error while TCP server listening %s, error info = %s\n", listeningLocalAddr, err.Error())
+		return
+	}
+	defer listener.Close()
+	fmt.Printf("[Server] TCP server listening on %s...\n", listener.Addr().String())
+	for {
+		socket, err := listener.Accept()
+		if err != nil {
+			fmt.Printf("[Server] Error while accept TCP connection from %s, error info = %s\n", socket.RemoteAddr().String(), err.Error())
+			continue
+		}
+		go s.tcpRead(socket, f)
 	}
 }
 
 func (s *Server) Start(f ServerFlags) {
 	err := s.d.ConnectToDB(dbName)
 	if err != nil {
-		fmt.Printf("Error while connecting to database, use cache in the memory. error info = %s", err.Error())
+		fmt.Printf("[Server] Error while connecting to database, use cache in the memory. error info = %s", err.Error())
 		s.cacheUseDatabase = false
 		s.cache = make(map[string]([]ServerCacheRecord))
 	} else {
 		s.cacheUseDatabase = true
 	}
-	addr := net.UDPAddr{
-		Port: 53,
-		IP:   net.IPv4(127, 0, 0, 1),
-	}
-	socket, _ := net.ListenUDP("udp", &addr)
-	defer socket.Close()
-	fmt.Printf("Listening on %s:%d...\n", addr.IP.String(), addr.Port)
 
-	for {
-		tmp := make([]byte, 4096)
-		n, addr, err := socket.ReadFrom(tmp)
-		if err != nil {
-			fmt.Printf("UDP read error, error info = %s\n", err.Error())
-			continue
-		}
-		go s.Execute(n, addr, tmp, f, socket)
+	if !f.TCPenable && !f.UDPenable {
+		fmt.Println("[Server] You cannot set both TCP and UDP modes disable.")
+		return
+	}
+	if !f.TCPenable {
+		s.udpListen(&f)
+	} else if !f.UDPenable {
+		s.tcpListen(&f)
+	} else {
+		go s.udpListen(&f)
+		s.tcpListen(&f)
 	}
 }

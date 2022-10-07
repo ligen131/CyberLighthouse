@@ -4,13 +4,13 @@
 [![cobra](https://img.shields.io/badge/Powered%20by-cobra-brightgreen)](https://github.com/spf13/cobra)
 [![mongodb](https://img.shields.io/badge/Powered%20by-mongodb-brightgreen)](https://github.com/mongodb/mongo)
 
-A simple DNS query client (likes command `dig` in linux) and server (local cache server), including a light DNS message parser and generator.
+A simple DNS query client (likes command `dig` in linux) and server (local cache server) which support both UDP and TCP connections, including a light DNS message parser and generator.
 
 ## Feature
 
 The project includes client and server, powered by a light DNS message parser and generator.
 
-Both client and server support net connection through UDP, and the following DNS records.
+Both client and server support net connection through UDP and TCP, and the following DNS records.
 
 ```
 A
@@ -126,8 +126,8 @@ GNU General Public License v3.0
 | 阶段 4 | DNS Server【进阶】支持 AAAA MX | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】缓存改存储 | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】支持递归查询开关 | ✅ | Day 6 |
-| 阶段 4 | DNS Server【进阶】支持 TCP | ❌ | -- |
-| 阶段 4 | DNS Server【进阶】支持协议更换 | ❌ | -- |
+| 阶段 4 | DNS Server【进阶】支持 TCP | ✅ | Day 7 |
+| 阶段 4 | DNS Server【进阶】支持协议更换 | ✅ | Day 7 |
 | 阶段 4 | DNS Server【进阶】支持并发 | ✅ | Day 6 |
 
 ### Task 1
@@ -640,3 +640,28 @@ TCP Test
 ```shell
 $ ./digg --tcp google.com
 ```
+
+参考：Go 设置 socket 端口复用 <https://luyuhuang.tech/2021/01/24/reuse-port.html>
+
+端口复用居然还有写好的包：gogf/greuse <https://github.com/gogf/greuse>
+
+给 `Server` 添加 TCP 支持。
+
+使用 `dig` 测试
+
+```shell
+$ dig google.com @localhost +vc
+$ dig mx google.com @localhost +vc
+$ dig aaaa ns1.google.com @localhost +vc
+$ dig ns google.com @localhost +vc
+$ dig cname mc.ligen131.com @localhost +vc
+$ dig txt google.com @localhost +vc # 惊讶地发现这玩意还能查其他的记录嘿嘿
+```
+
+服务端协议切换开关：
+
+```shell
+$ ./digd --tcp=true --udp=true
+```
+
+ALL MISSIONS COMPLETED!

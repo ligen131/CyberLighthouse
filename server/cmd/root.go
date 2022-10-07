@@ -29,4 +29,6 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&flags.IsRecursion, "recursion", true, "if true, server will query recursitively")
+	rootCmd.PersistentFlags().BoolVar(&flags.TCPenable, "tcp", true, "if true, server will enable TCP package")
+	rootCmd.PersistentFlags().BoolVar(&flags.UDPenable, "udp", true, "if true, server will enable UDP package")
 }
