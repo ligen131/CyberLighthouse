@@ -34,15 +34,10 @@ func TestParser(t *testing.T) {
 		var pk packet.PacketParser
 		pk.OriginData = buff
 		err = pk.Parse()
-		var s string
 		if err != nil {
 			t.Error(err, "Parse failed.")
 		} else {
-			s, err = pk.Output()
-			if err != nil {
-				t.Error(err, "Output failed.")
-			}
-			fmt.Println(s)
+			fmt.Println(pk.Result.Output(false))
 		}
 	}
 }
@@ -80,15 +75,8 @@ func TestGenerator(t *testing.T) {
 			t.Error(err, "Parse2 failed.")
 		}
 		fmt.Println("------------------------------------------------")
-		var s1, s2 string
-		s1, err = pk.Output()
-		if err != nil {
-			t.Error(err, "Output failed.")
-		}
-		s2, err = pk2.Output()
-		if err != nil {
-			t.Error(err, "Output2 failed.")
-		}
+		s1 := pk.Result.Output(false)
+		s2 := pk2.Result.Output(false)
 		fmt.Println(s1)
 		fmt.Println(s2)
 		fmt.Println("------------------------------------------------")

@@ -200,10 +200,7 @@ func (c *Client) Query(f *ClientFlags) string {
 		return err.Error()
 	}
 	ans := "The query result:\n---------------------------------\n"
-	s, err := p.Output()
-	if err != nil {
-		return fmt.Sprintf("Received data output failed. error info = %v", err)
-	}
+	s := p.Result.Output(true)
 	ans += s + "---------------------------------\n"
 	return ans
 }

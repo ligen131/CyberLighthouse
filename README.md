@@ -665,3 +665,26 @@ $ ./digd --tcp=true --udp=true
 ```
 
 ALL MISSIONS COMPLETED!
+
+简化了客户端输出。
+
+```shell
+$ ./digg ns google.com --tcp --server=127.0.0.1
+[Client] Receive TCP package from [127.0.0.1]:53, length = 182
+The query result:
+---------------------------------
+;; Reply code: No error (0)
+;; QUERY: 1, ANSWER: 4, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTIONS SECTION:
+google.com.     IN      NS
+
+;; ANSWERS SECTION:
+google.com.     IN      NS      172800  ns2.google.com.
+google.com.     IN      NS      172800  ns1.google.com.
+google.com.     IN      NS      172800  ns3.google.com.
+google.com.     IN      NS      172800  ns4.google.com.
+---------------------------------
+```
+
+把输出代码从 `PacketParser` 迁移到 `Packet` 。
