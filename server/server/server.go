@@ -161,25 +161,28 @@ func (s *Server) nextRecuFromNS(r *[]packet.PacketRecords, send *packet.PacketGe
 					return nil
 				}
 			}
-			c := client.Client{}
+			c := client.Client{
+				IsTCP: false,
+				Retry: 2,
+			}
 			clientFlags := client.ClientFlags{
 				F_Record:      packet.RECORD_A,
 				F_Server:      currentServer,
 				F_Url:         (*r)[i].R_Data.R_NS_Name,
 				F_IsRecursion: isRecursion,
 			}
-			recv, _, _, err := c.SendQuery(&clientFlags)
+			recv, err := c.SendQuery(&clientFlags)
 			if err != nil {
 				continue
 			}
 
-			s.addManyCache(&recv.Result.P_Answers)
-			s.addManyCache(&recv.Result.P_Authority)
-			s.addManyCache(&recv.Result.P_Additional)
+			s.addManyCache(&recv.P_Answers)
+			s.addManyCache(&recv.P_Authority)
+			s.addManyCache(&recv.P_Additional)
 
-			s.nextRecuFromA(&recv.Result.P_Answers, send, currentServer, isRecursion)
-			s.nextRecuFromA(&recv.Result.P_Authority, send, currentServer, isRecursion)
-			s.nextRecuFromA(&recv.Result.P_Additional, send, currentServer, isRecursion)
+			s.nextRecuFromA(&recv.P_Answers, send, currentServer, isRecursion)
+			s.nextRecuFromA(&recv.P_Authority, send, currentServer, isRecursion)
+			s.nextRecuFromA(&recv.P_Additional, send, currentServer, isRecursion)
 		}
 		if send.Pkt.P_Header.H_AnswerRRs != 0 {
 			return nil
@@ -209,47 +212,47 @@ func (s *Server) recursion(send *packet.PacketGenerator, currentServer net.IP, i
 		F_Url:         send.Pkt.P_Queries[0].Q_Name,
 		F_IsRecursion: isRecursion,
 	}
-	recv, _, _, err := c.SendQuery(&clientFlags)
+	recv, err := c.SendQuery(&clientFlags)
 
 	if err != nil {
-		send.Pkt.P_Header.H_Flags.F_rcode = recv.Result.P_Header.H_Flags.F_rcode
+		send.Pkt.P_Header.H_Flags.F_rcode = recv.P_Header.H_Flags.F_rcode
 		return err
 	}
 
-	s.addManyCache(&recv.Result.P_Answers)
-	s.addManyCache(&recv.Result.P_Authority)
-	s.addManyCache(&recv.Result.P_Additional)
+	s.addManyCache(&recv.P_Answers)
+	s.addManyCache(&recv.P_Authority)
+	s.addManyCache(&recv.P_Additional)
 
 	if !isRecursion {
-		send.Pkt.P_Header.H_QueriesCount = recv.Result.P_Header.H_QueriesCount
-		send.Pkt.P_Header.H_AnswerRRs = recv.Result.P_Header.H_AnswerRRs
-		send.Pkt.P_Header.H_AuthorityRRs = recv.Result.P_Header.H_AuthorityRRs
-		send.Pkt.P_Header.H_AdditionalRRs = recv.Result.P_Header.H_AdditionalRRs
-		send.Pkt.P_Answers = recv.Result.P_Answers
-		send.Pkt.P_Authority = recv.Result.P_Authority
-		send.Pkt.P_Additional = recv.Result.P_Additional
+		send.Pkt.P_Header.H_QueriesCount = recv.P_Header.H_QueriesCount
+		send.Pkt.P_Header.H_AnswerRRs = recv.P_Header.H_AnswerRRs
+		send.Pkt.P_Header.H_AuthorityRRs = recv.P_Header.H_AuthorityRRs
+		send.Pkt.P_Header.H_AdditionalRRs = recv.P_Header.H_AdditionalRRs
+		send.Pkt.P_Answers = recv.P_Answers
+		send.Pkt.P_Authority = recv.P_Authority
+		send.Pkt.P_Additional = recv.P_Additional
 		return nil
 	}
 
-	s.checkPacketRecords(&recv.Result.P_Answers, send, currentServer)
-	s.checkPacketRecords(&recv.Result.P_Authority, send, currentServer)
-	s.checkPacketRecords(&recv.Result.P_Additional, send, currentServer)
+	s.checkPacketRecords(&recv.P_Answers, send, currentServer)
+	s.checkPacketRecords(&recv.P_Authority, send, currentServer)
+	s.checkPacketRecords(&recv.P_Additional, send, currentServer)
 	if send.Pkt.P_Header.H_AnswerRRs != 0 {
 		send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
 		return nil
 	}
 
-	s.nextRecuFromA(&recv.Result.P_Answers, send, currentServer, isRecursion)
-	s.nextRecuFromA(&recv.Result.P_Authority, send, currentServer, isRecursion)
-	s.nextRecuFromA(&recv.Result.P_Additional, send, currentServer, isRecursion)
+	s.nextRecuFromA(&recv.P_Answers, send, currentServer, isRecursion)
+	s.nextRecuFromA(&recv.P_Authority, send, currentServer, isRecursion)
+	s.nextRecuFromA(&recv.P_Additional, send, currentServer, isRecursion)
 	if send.Pkt.P_Header.H_AnswerRRs != 0 {
 		send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
 		return nil
 	}
 
-	s.nextRecuFromNS(&recv.Result.P_Answers, send, currentServer, isRecursion)
-	s.nextRecuFromNS(&recv.Result.P_Authority, send, currentServer, isRecursion)
-	s.nextRecuFromNS(&recv.Result.P_Additional, send, currentServer, isRecursion)
+	s.nextRecuFromNS(&recv.P_Answers, send, currentServer, isRecursion)
+	s.nextRecuFromNS(&recv.P_Authority, send, currentServer, isRecursion)
+	s.nextRecuFromNS(&recv.P_Additional, send, currentServer, isRecursion)
 	if send.Pkt.P_Header.H_AnswerRRs != 0 {
 		send.Pkt.P_Header.H_Flags.F_rcode = packet.RCODE_NOERROR
 		return nil

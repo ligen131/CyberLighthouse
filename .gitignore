@@ -24,3 +24,4 @@ build
 pkg
 
 %LocalAppData%
+tmp

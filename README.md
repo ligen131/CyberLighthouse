@@ -120,7 +120,7 @@ GNU General Public License v3.0
 | 阶段 2 | 生成器【进阶】 支持 AAAA MX | ✅ | Day 5 |
 | 阶段 3 | DNS Client | ✅ | Day 5 |
 | 阶段 3 | DNS Client【进阶】支持 AAAA MX | ✅ | Day 5 |
-| 阶段 3 | DNS Client【进阶】支持 TCP | ❌ | -- |
+| 阶段 3 | DNS Client【进阶】支持 TCP | ✅ | Day 7 |
 | 阶段 4 | DNS Server 递归查询 | ✅ | Day 6 |
 | 阶段 4 | DNS Server 缓存 | ✅ | Day 6 |
 | 阶段 4 | DNS Server【进阶】支持 AAAA MX | ✅ | Day 6 |
@@ -619,4 +619,24 @@ Read cache qq.com., len = 4
 [203 205 254 157]
 [123 151 137 18]
 [61 129 7 47]
+```
+
+Day 7
+
+昨天晚上看做的差不多了，溜出去玩
+
+研究了好久为啥给服务器发 TCP 包发不过去，后来 `dig +vc google.com` 发现 TCP 包前面要加上包长度 `Data Length` 。。。
+
+给 `Client` 添加了 TCP 发包支持，这样 `Server` 执行递归查询的时候也可以使用 TCP 了。
+
+甚至客户端发包支持并发（不过目前不需要），算是重构了一下客户端。
+
+修改了 `Client` 超时机制，原本给 `8.8.8.8` 发包会收到两个包，现在解决了这个问题（两个包都解析），但是测试的时候 `8.8.8.8` 只会发一个包了🤔。（超时机制：第一个包发送和接收 3s，后面如果还有附加包接收只有 200ms 超时）
+
+用之前的测试。
+
+TCP Test
+
+```shell
+$ ./digg --tcp google.com
 ```

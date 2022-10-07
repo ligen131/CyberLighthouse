@@ -2,9 +2,12 @@ package client
 
 import (
 	"CyberLighthouse/packet"
+	"CyberLighthouse/util"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -14,6 +17,8 @@ type ClientFlagsOrigin struct {
 	Url         string
 	Server      string
 	IsRecursion bool
+	IsTCP       bool
+	Retry       int
 }
 
 type ClientFlags struct {
@@ -43,74 +48,159 @@ func (f *ClientFlags) ParseFlags() {
 		f.F_Server = net.ParseIP("8.8.8.8")
 	}
 	f.F_IsRecursion = f.OriginFlags.IsRecursion
+
+	if f.OriginFlags.Retry < 0 {
+		f.OriginFlags.Retry = 0
+	}
 }
 
 var queryTemplate []byte = []byte{0, 0, 1, 32, 0, 1, 0, 0, 0, 0, 0, 0, 6,
 	103, 111, 111, 103, 108, 101, 3, 99, 111, 109, 0, 0, 1, 0, 1}
 
 type Client struct {
-	send   packet.PacketGenerator
-	recv   packet.PacketParser
-	socket *net.UDPConn
+	IsTCP   bool
+	Retry   int
+	Timeout time.Duration
+	running int
+	Result  []packet.Packet
 }
 
-func (c *Client) SendQuery(f *ClientFlags) (packet.PacketParser, int, net.UDPAddr, error) {
-	var err error
-	c.socket, err = net.DialUDP("udp", nil, &net.UDPAddr{
-		IP:   f.F_Server,
-		Port: 53,
-	})
-	if err != nil {
-		return packet.PacketParser{}, 0, net.UDPAddr{}, fmt.Errorf("Connect to server %s failed. error info = %v", f.F_Server.String(), err)
+func (c *Client) send(IP net.IP, Port int, data []byte, callbackFunc func([]byte)) error {
+	network := "udp"
+	if c.IsTCP {
+		network = "tcp"
 	}
-	defer c.socket.Close()
+	socket, err := net.Dial(network, fmt.Sprintf("[%s]:%d", IP.String(), Port))
+	defer socket.Close()
+	if err != nil {
+		return fmt.Errorf("[Client] Connect to server [%s]:%d failed. error info = %s\n", IP, Port, err.Error())
+	}
+	socket.SetDeadline(time.Now().Add(c.Timeout))
+	if c.IsTCP {
+		a, b := util.Uint16ToByte(uint16(len(data)))
+		tmp := []byte{a, b}
+		data = append(tmp, data...)
+	}
+	_, err = socket.Write(data)
+	if err != nil {
+		return fmt.Errorf("[Client] Write data failed. error info = %s\n", err.Error())
+	}
+	cnt := 0
+	for {
+		cnt++
+		if cnt > 1 {
+			socket.SetDeadline(time.Now().Add(time.Millisecond * 200))
+		} else {
+			socket.SetDeadline(time.Now().Add(c.Timeout))
+		}
+		data := make([]byte, 4096)
+		n, err := socket.Read(data)
+		if err != nil {
+			break
+		}
+		fmt.Printf("[Client] Receive %s package from [%s]:%d, length = %d\n",
+			strings.ToUpper(network), IP.String(), Port, n)
+		if c.IsTCP {
+			if len(data) < 2 {
+				continue
+			}
+			data = data[2:]
+		}
+		if callbackFunc != nil {
+			callbackFunc(data)
+		}
+	}
+	if cnt == 1 {
+		return errors.New("Empty response")
+	}
+	return nil
+}
+
+func (c *Client) Send(IP net.IP, Port int, data []byte, callbackFunc func([]byte)) {
+	c.running++
+	err := c.send(IP, Port, data, callbackFunc)
+	if err != nil {
+		for i := 0; i < c.Retry; i++ {
+			fmt.Printf("Error occur while sending package. error info = %s. Retry %d times...\n", err.Error(), c.Retry-i)
+			err := c.send(IP, Port, data, callbackFunc)
+			if err == nil {
+				break
+			}
+		}
+	}
+	c.running--
+}
+
+func (c *Client) dataCallback(data []byte) {
+	p := packet.PacketParser{
+		OriginData: data,
+	}
+	err := p.Parse()
+	if err != nil {
+		fmt.Printf("Received data parse failed. error info = %s", err.Error())
+		return
+	}
+	c.Result = append(c.Result, p.Result)
+}
+
+func (c *Client) SendQuery(f *ClientFlags) (packet.Packet, error) {
+	c.IsTCP = f.OriginFlags.IsTCP
+	if c.Timeout < time.Millisecond*200 {
+		c.Timeout = time.Second
+	}
 
 	var tmp packet.PacketParser
 	tmp.OriginData = queryTemplate
-	err = tmp.Parse()
+	err := tmp.Parse()
 	if err != nil {
-		return packet.PacketParser{}, 0, net.UDPAddr{}, fmt.Errorf("Template parse failed. Cannot get to this place! error info = %v", err)
+		return packet.Packet{}, fmt.Errorf("Template parse failed. Cannot get to this place! error info = %v", err)
 	}
 	tmp.Result.P_Queries[0].Q_Name = f.F_Url
 	tmp.Result.P_Queries[0].Q_Type = f.F_Record
 	tmp.Result.P_Header.H_Flags.F_RD = f.F_IsRecursion
 	rand.Seed(time.Now().UnixNano())
 	tmp.Result.P_Header.H_TransactionID = uint16(rand.Int31())
-	c.send.Pkt = tmp.Result
-
-	err = c.send.Generator()
-	if err != nil {
-		return packet.PacketParser{}, 0, net.UDPAddr{}, fmt.Errorf("UDP package generate failed. Please check your input URL. error info = %v", err)
+	send := packet.PacketGenerator{
+		Pkt: tmp.Result,
 	}
 
-	c.socket.SetDeadline(time.Now().Add(time.Second))
-	_, err = c.socket.Write(c.send.Result)
+	err = send.Generator()
 	if err != nil {
-		return packet.PacketParser{}, 0, net.UDPAddr{}, fmt.Errorf("Send data failed. error info = %v", err)
+		return packet.Packet{}, fmt.Errorf("Package generate failed. Please check your input URL. error info = %v", err)
 	}
 
-	c.recv.OriginData = make([]byte, 4096)
-	c.socket.SetDeadline(time.Now().Add(time.Second))	
-	n, remoteAddr, err := c.socket.ReadFromUDP(c.recv.OriginData)
-	if err != nil {
-		return packet.PacketParser{}, 0, net.UDPAddr{}, fmt.Errorf("Data receive failed. error info = %v", err)
+	c.Result = []packet.Packet{}
+	c.Send(f.F_Server, 53, send.Result, c.dataCallback)
+	if len(c.Result) == 0 {
+		return packet.Packet{}, errors.New("Empty or no valid response.")
 	}
-	fmt.Printf("[Client] Receive UDP package from %s, length = %d\n", remoteAddr.String(), n)
-	err = c.recv.Parse()
-	if err != nil {
-		return packet.PacketParser{}, 0, net.UDPAddr{}, fmt.Errorf("Received data parse failed. error info = %v", err)
-	}
+	p := c.Result[0]
+	for i := range c.Result {
+		if i > 0 {
+			p.P_Header.H_AnswerRRs += c.Result[i].P_Header.H_AnswerRRs
+			p.P_Header.H_AuthorityRRs += c.Result[i].P_Header.H_AuthorityRRs
+			p.P_Header.H_AdditionalRRs += c.Result[i].P_Header.H_AdditionalRRs
 
-	return c.recv, n, (*remoteAddr), nil
+			p.P_Answers = append(p.P_Answers, c.Result[i].P_Answers...)
+			p.P_Authority = append(p.P_Authority, c.Result[i].P_Authority...)
+			p.P_Additional = append(p.P_Additional, c.Result[i].P_Additional...)
+		}
+	}
+	return p, nil
 }
 
 func (c *Client) Query(f *ClientFlags) string {
-	pkt, n, addr, err := c.SendQuery(f)
+	c.Timeout = time.Second * 3
+	c.IsTCP = f.OriginFlags.IsTCP
+	c.Retry = f.OriginFlags.Retry
+	var err error
+	p := packet.PacketParser{}
+	p.Result, err = c.SendQuery(f)
 	if err != nil {
 		return err.Error()
 	}
-	ans := fmt.Sprintf("Receive data from %s:%d, UDP package length = %d\nThe query result:\n---------------------------------\n", addr.IP.String(), addr.Port, n)
-	s, err := pkt.Output()
+	ans := "The query result:\n---------------------------------\n"
+	s, err := p.Output()
 	if err != nil {
 		return fmt.Sprintf("Received data output failed. error info = %v", err)
 	}

@@ -45,7 +45,7 @@ For more information, please visit
 			flags.OriginFlags.Url = args[1]
 		}
 		flags.ParseFlags()
-		var c client.Client
+		c := client.Client{}
 		fmt.Println(c.Query(&flags))
 	},
 }
@@ -59,6 +59,8 @@ func init() {
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.digg.yaml)")
 	rootCmd.PersistentFlags().StringVar(&flags.OriginFlags.Server, "server", "8.8.8.8", "DNS server for querying")
 	rootCmd.PersistentFlags().BoolVar(&flags.OriginFlags.IsRecursion, "recursion", true, "if true, server will query recursitively")
+	rootCmd.PersistentFlags().BoolVar(&flags.OriginFlags.IsTCP, "tcp", false, "if true, server will send package through TCP")
+	rootCmd.PersistentFlags().IntVar(&flags.OriginFlags.Retry, "retry", 2, "retry sending package times while errors occur")
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
